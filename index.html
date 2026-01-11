@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>けいさんチャレンジ</title>
+<style>
+    body {
+        font-family: sans-serif;
+        text-align: center;
+        background: #f0f8ff;
+    }
+    .container {
+        max-width: 400px;
+        margin: 40px auto;
+        padding: 20px;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .question {
+        font-size: 32px;
+        margin: 20px 0;
+    }
+    .answer {
+        font-size: 28px;
+        height: 50px;
+        margin-bottom: 20px;
+        border: 2px solid #ccc;
+        border-radius: 5px;
+        line-height: 50px;
+    }
+    .keypad {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+    }
+    button {
+        font-size: 20px;
+        padding: 15px;
+        border-radius: 8px;
+        border: none;
+        background: #87cefa;
+        cursor: pointer;
+    }
+    button:hover {
+        background: #5fb3e6;
+    }
+    .result {
+        margin-top: 15px;
+        font-size: 18px;
+    }
+    .keyword {
+        margin-top: 20px;
+        font-size: 24px;
+        color: red;
+        font-weight: bold;
+    }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h2>10もんれんぞく せいかいチャレンジ！</h2>
+
+    <div class="question" id="question"></div>
+    <div class="answer" id="answer"></div>
+
+    <div class="keypad">
+        <button onclick="press(1)">1</button>
+        <button onclick="press(2)">2</button>
+        <button onclick="press(3)">3</button>
+        <button onclick="press(4)">4</button>
+        <button onclick="press(5)">5</button>
+        <button onclick="press(6)">6</button>
+        <button onclick="press(7)">7</button>
+        <button onclick="press(8)">8</button>
+        <button onclick="press(9)">9</button>
+        <button onclick="clearAnswer()">C</button>
+        <button onclick="press(0)">0</button>
+        <button onclick="checkAnswer()">OK</button>
+    </div>
+
+    <div class="result" id="result"></div>
+    <div class="keyword" id="keyword"></div>
+</div>
+
+<script>
+let correctStreak = 0;
+let currentAnswer = 0;
+let input = "";
+
+function newQuestion() {
+    input = "";
+    document.getElementById("answer").textContent = "";
+
+    const a = Math.floor(Math.random() * 50) + 1;
+    const b = Math.floor(Math.random() * 50) + 1;
+    const isAdd = Math.random() < 0.5;
+
+    if (isAdd) {
+        currentAnswer = a + b;
+        document.getElementById("question").textContent = `${a} + ${b} = ?`;
+    } else {
+        const max = Math.max(a, b);
+        const min = Math.min(a, b);
+        currentAnswer = max - min;
+        document.getElementById("question").textContent = `${max} - ${min} = ?`;
+    }
+}
+
+function press(num) {
+    if (input.length >= 3) return;
+    input += num;
+    document.getElementById("answer").textContent = input;
+}
+
+function clearAnswer() {
+    input = "";
+    document.getElementById("answer").textContent = "";
+}
+
+function checkAnswer() {
+    if (Number(input) === currentAnswer) {
+        correctStreak++;
+        document.getElementById("result").textContent = 
+            `せいかい！ (${correctStreak}/10)`;
+
+        if (correctStreak >= 10) {
+            document.getElementById("keyword").textContent =
+                "キーワード：がんばったね！";
+        } else {
+            newQuestion();
+        }
+    } else {
+        correctStreak = 0;
+        document.getElementById("result").textContent =
+            "ざんねん… もういちど！";
+        newQuestion();
+    }
+}
+
+newQuestion();
+</script>
+
+</body>
+</html>
