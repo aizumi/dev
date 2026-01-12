@@ -1,1 +1,181 @@
-aa
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>おんせい ぶんしょうだい</title>
+
+<style>
+body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #eef6ff;
+}
+.container {
+    max-width: 420px;
+    margin: auto;
+    padding: 20px;
+    text-align: center;
+}
+h2 {
+    margin-bottom: 20px;
+}
+.answer {
+    height: 60px;
+    font-size: 32px;
+    border: 2px solid #ccc;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    line-height: 60px;
+    background: #fff;
+}
+.keypad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+button {
+    font-size: 22px;
+    padding: 18px 0;
+    border-radius: 12px;
+    border: none;
+    background: #4da3ff;
+    color: #fff;
+}
+button:active {
+    background: #2f7fd6;
+}
+.control {
+    background: #adb5bd;
+}
+.ok {
+    background: #2ecc71;
+}
+.result {
+    margin-top: 15px;
+    font-size: 18px;
+    min-height: 24px;
+}
+.keyword {
+    margin-top: 20px;
+    font-size: 26px;
+    color: #e63946;
+    font-weight: bold;
+}
+.replay {
+    margin-bottom: 15px;
+    background: #ff9f1c;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🎧 おんせい ぶんしょうだい</h2>
+
+    <button class="replay" onclick="speak()">🔊 もういちど きく</button>
+
+    <div class="answer" id="answer"></div>
+
+    <div class="keypad">
+        <button onclick="press(1)">1</button>
+        <button onclick="press(2)">2</button>
+        <button onclick="press(3)">3</button>
+        <button onclick="press(4)">4</button>
+        <button onclick="press(5)">5</button>
+        <button onclick="press(6)">6</button>
+        <button onclick="press(7)">7</button>
+        <button onclick="press(8)">8</button>
+        <button onclick="press(9)">9</button>
+        <button class="control" onclick="clearAnswer()">C</button>
+        <button onclick="press(0)">0</button>
+        <button class="ok" onclick="checkAnswer()">OK</button>
+    </div>
+
+    <div class="result" id="result"></div>
+    <div class="keyword" id="keyword"></div>
+</div>
+
+<script>
+const problems = [
+    {
+        text: "りんごが ろっこ あります。さんこ たべました。のこりは なんこでしょう。",
+        answer: 3
+    },
+    {
+        text: "えんぴつを よんほん もっています。ごほん もらいました。ぜんぶで なんほんでしょう。",
+        answer: 9
+    },
+    {
+        text: "あめを さんにんに よんこずつ くばります。あめは なんこ いりますか。",
+        answer: 12
+    },
+    {
+        text: "バスに はちにん のっています。あとから ななにん のりました。ぜんぶで なんにんでしょう。",
+        answer: 15
+    },
+    {
+        text: "ケーキが じゅうにこ あります。ろっこ くばりました。のこりは なんこでしょう。",
+        answer: 6
+    }
+];
+
+let index = 0;
+let input = "";
+
+function speak() {
+    const uttr = new SpeechSynthesisUtterance(problems[index].text);
+    uttr.lang = "ja-JP";
+    uttr.rate = 0.9;   // ゆっくり
+    uttr.pitch = 1.0;
+    speechSynthesis.cancel();
+    speechSynthesis.speak(uttr);
+}
+
+function showProblem() {
+    input = "";
+    answer.textContent = "";
+    result.textContent = "";
+    speak();
+}
+
+function press(num) {
+    if (input.length >= 3) return;
+    input += num;
+    answer.textContent = input;
+}
+
+function clearAnswer() {
+    input = "";
+    answer.textContent = "";
+}
+
+function checkAnswer() {
+    if (Number(input) === problems[index].answer) {
+        index++;
+        result.textContent = "せいかい！";
+
+        if (index >= problems.length) {
+            keyword.textContent = "クリア！次は「さなのパンツ」をさがせ";
+        } else {
+            setTimeout(showProblem, 800);
+        }
+    } else {
+        result.textContent = "ちがうよ。もういちど きいてね";
+        speak();
+    }
+}
+
+const answer = document.getElementById("answer");
+const result = document.getElementById("result");
+const keyword = document.getElementById("keyword");
+
+// 初回はユーザー操作後でないと音が出ない端末対策
+document.body.addEventListener("click", initOnce, { once: true });
+function initOnce() {
+    showProblem();
+}
+</script>
+
+</body>
+</html>
