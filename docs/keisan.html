@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>けいさんチャレンジ</title>
+
+<style>
+    body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+        background: #f2f7ff;
+    }
+
+    .container {
+        max-width: 420px;
+        margin: 0 auto;
+        padding: 20px;
+        text-align: center;
+    }
+
+    h2 {
+        margin-bottom: 10px;
+    }
+
+    .question {
+        font-size: 36px;
+        margin: 20px 0;
+    }
+
+    .answer {
+        height: 60px;
+        font-size: 32px;
+        border: 2px solid #ccc;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        line-height: 60px;
+        background: #fff;
+    }
+
+    .keypad {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+    }
+
+    button {
+        font-size: 22px;
+        padding: 18px 0;
+        border-radius: 12px;
+        border: none;
+        background: #4da3ff;
+        color: #fff;
+    }
+
+    button:active {
+        background: #2f7fd6;
+    }
+
+    .control {
+        background: #ff9f43;
+    }
+
+    .ok {
+        background: #2ecc71;
+    }
+
+    .result {
+        margin-top: 15px;
+        font-size: 18px;
+        min-height: 24px;
+    }
+
+    .keyword {
+        margin-top: 20px;
+        font-size: 26px;
+        color: #e74c3c;
+        font-weight: bold;
+    }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h2>10もんれんぞく せいかい！</h2>
+
+    <div class="question" id="question"></div>
+    <div class="answer" id="answer"></div>
+
+    <div class="keypad">
+        <button onclick="press(1)">1</button>
+        <button onclick="press(2)">2</button>
+        <button onclick="press(3)">3</button>
+        <button onclick="press(4)">4</button>
+        <button onclick="press(5)">5</button>
+        <button onclick="press(6)">6</button>
+        <button onclick="press(7)">7</button>
+        <button onclick="press(8)">8</button>
+        <button onclick="press(9)">9</button>
+        <button class="control" onclick="clearAnswer()">C</button>
+        <button onclick="press(0)">0</button>
+        <button class="ok" onclick="checkAnswer()">OK</button>
+    </div>
+
+    <div class="result" id="result"></div>
+    <div class="keyword" id="keyword"></div>
+</div>
+
+<script>
+let correctStreak = 0;
+let currentAnswer = 0;
+let input = "";
+
+function newQuestion() {
+    input = "";
+    document.getElementById("answer").textContent = "";
+
+    const type = Math.floor(Math.random() * 3); // 0:+ 1:- 2:×
+    let a, b;
+
+    if (type === 0) {
+        a = rand(1, 50);
+        b = rand(1, 50);
+        currentAnswer = a + b;
+        question.textContent = `${a} + ${b}`;
+    } 
+    else if (type === 1) {
+        a = rand(1, 50);
+        b = rand(1, 50);
+        const max = Math.max(a, b);
+        const min = Math.min(a, b);
+        currentAnswer = max - min;
+        question.textContent = `${max} − ${min}`;
+    } 
+    else {
+        a = rand(1, 12);
+        b = rand(1, 12);
+        currentAnswer = a * b;
+        question.textContent = `${a} × ${b}`;
+    }
+}
+
+function rand(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function press(num) {
+    if (input.length >= 3) return;
+    input += num;
+    answer.textContent = input;
+}
+
+function clearAnswer() {
+    input = "";
+    answer.textContent = "";
+}
+
+function checkAnswer() {
+    if (Number(input) === currentAnswer) {
+        correctStreak++;
+        result.textContent = `せいかい！ ${correctStreak}/10`;
+
+        if (correctStreak >= 10) {
+            keyword.textContent = "クリア！「次は２かいのトイレ」";
+        } else {
+            newQuestion();
+        }
+    } else {
+        correctStreak = 0;
+        result.textContent = "ちがうよ！ もういちど";
+        newQuestion();
+    }
+}
+
+const question = document.getElementById("question");
+const answer = document.getElementById("answer");
+const result = document.getElementById("result");
+const keyword = document.getElementById("keyword");
+
+newQuestion();
+</script>
+
+</body>
+</html>
