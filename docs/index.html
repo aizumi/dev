@@ -3,29 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>おんぷあてゲーム</title>
+    <title>おんぷあてタイムアタック</title>
     <style>
         body { font-family: sans-serif; text-align: center; background-color: #f0f8ff; margin: 0; padding: 10px; touch-action: manipulation; }
         .container { max-width: 400px; margin: auto; background: white; padding: 15px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         h1 { color: #ff6f61; font-size: 20px; margin: 5px 0; }
         .hidden { display: none; }
         
+        /* タイマー表示 */
+        #timer-display { font-size: 20px; font-weight: bold; color: #ff9800; margin: 5px 0; }
+
         /* 五線譜エリア */
-        .staff-area { position: relative; width: 100%; height: 160px; margin: 20px 0; background: white; }
+        .staff-area { position: relative; width: 100%; height: 160px; margin: 10px 0; background: white; border-left: 2px solid black; border-right: 2px solid black; }
         .line { position: absolute; width: 100%; height: 2px; background: black; left: 0; }
         .line1 { top: 40px; } .line2 { top: 60px; } .line3 { top: 80px; } .line4 { top: 100px; } .line5 { top: 120px; }
 
-        #clef-display { position: absolute; left: 10px; top: 25px; font-size: 90px; line-height: 1; pointer-events: none; }
-        #note { position: absolute; width: 26px; height: 20px; background: black; border-radius: 50%; left: 50%; transform: translateX(-50%); z-index: 10; }
-        #ledger-line { position: absolute; width: 40px; height: 2px; background: black; left: 50%; transform: translateX(-50%); z-index: 5; display: none; }
+        #clef-display { position: absolute; left: 5px; top: 25px; font-size: 90px; line-height: 1; pointer-events: none; }
+        #note { position: absolute; width: 26px; height: 20px; background: black; border-radius: 50%; left: 55%; transform: translateX(-50%); z-index: 10; }
+        #ledger-line { position: absolute; width: 40px; height: 2px; background: black; left: 55%; transform: translateX(-50%); z-index: 5; display: none; }
 
-        /* 設定画面のチェックボックス */
+        /* 設定画面 */
         .note-selector { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 15px 0; padding: 10px; background: #eee; border-radius: 10px; }
         .note-checkbox { display: flex; align-items: center; background: white; padding: 5px 10px; border-radius: 5px; font-size: 14px; border: 1px solid #ccc; }
         .note-checkbox input { margin-right: 5px; width: 18px; height: 18px; }
 
         .btn-group { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 15px; }
-        button { padding: 15px 5px; font-size: 18px; cursor: pointer; border: none; border-radius: 8px; background-color: #2196f3; color: white; font-weight: bold; }
+        button { padding: 15px 5px; font-size: 18px; cursor: pointer; border: none; border-radius: 8px; background-color: #2196f3; color: white; font-weight: bold; -webkit-tap-highlight-color: transparent; }
         .mode-btn { background-color: #ff9800; margin-bottom: 5px; padding: 10px; font-size: 14px; }
         .mode-btn.active { outline: 3px solid #333; }
         .start-btn { width: 100%; padding: 20px; background: #ff6f61; font-size: 20px; margin-top: 10px; }
@@ -47,8 +50,7 @@
         </div>
 
         <p>2. でてくる音を えらんでね</p>
-        <div class="note-selector" id="note-choices">
-            </div>
+        <div class="note-selector" id="note-choices"></div>
 
         <p>3. もんだいすう：
             <select id="question-count" style="font-size:18px;">
@@ -61,6 +63,7 @@
     </div>
 
     <div id="game" class="hidden">
+        <div id="timer-display">タイム: 0.0秒</div>
         <div id="status">だい 1 もん / 10</div>
         <div class="staff-area">
             <div class="line line1"></div><div class="line line2"></div><div class="line line3"></div><div class="line line4"></div><div class="line line5"></div>
@@ -83,7 +86,8 @@
 
     <div id="end" class="hidden">
         <h2>おわり！</h2>
-        <p id="score-text" style="font-size:20px;"></p>
+        <p id="final-time" style="font-size:24px; color: #ff9800; font-weight: bold;"></p>
+        <p id="score-text" style="font-size:18px;"></p>
         <button class="start-btn" onclick="location.reload()">もう一度あそぶ</button>
     </div>
 </div>
@@ -95,40 +99,41 @@
     let correctCount = 0;
     let currentNote = null;
     let activeNotes = [];
+    
+    // タイマー用変数
+    let startTime;
+    let timerInterval;
 
     const noteData = {
         treble: [
-            { id: 0, name: 'ド', top: 130, ledger: 139 },
-            { id: 1, name: 'レ', top: 120, ledger: null },
-            { id: 2, name: 'ミ', top: 110, ledger: null },
-            { id: 3, name: 'ファ', top: 100, ledger: null },
-            { id: 4, name: 'ソ', top: 90, ledger: null },
-            { id: 5, name: 'ラ', top: 80, ledger: null },
-            { id: 6, name: 'シ', top: 70, ledger: null },
-            { id: 7, name: 'ド', top: 60, ledger: null }
+            { name: 'ド', top: 130, ledger: 139 },
+            { name: 'レ', top: 120, ledger: null },
+            { name: 'ミ', top: 110, ledger: null },
+            { name: 'ファ', top: 100, ledger: null },
+            { name: 'ソ', top: 90, ledger: null },
+            { name: 'ラ', top: 80, ledger: null },
+            { name: 'シ', top: 70, ledger: null },
+            { name: 'ド', top: 60, ledger: null }
         ],
         bass: [
-            { id: 0, name: 'ド', top: 70, ledger: null },
-            { id: 1, name: 'レ', top: 60, ledger: null },
-            { id: 2, name: 'ミ', top: 50, ledger: null },
-            { id: 3, name: 'ファ', top: 40, ledger: null },
-            { id: 4, name: 'ソ', top: 30, ledger: null },
-            { id: 5, name: 'ラ', top: 20, ledger: null },
-            { id: 6, name: 'シ', top: 10, ledger: null },
-            { id: 7, name: 'ド', top: 0, ledger: 9 }
+            { name: 'ド', top: 70, ledger: null },
+            { name: 'レ', top: 60, ledger: null },
+            { name: 'ミ', top: 50, ledger: null },
+            { name: 'ファ', top: 40, ledger: null },
+            { name: 'ソ', top: 30, ledger: null },
+            { name: 'ラ', top: 20, ledger: null },
+            { name: 'シ', top: 10, ledger: null },
+            { name: 'ド', top: 0, ledger: 9 }
         ]
     };
 
-    // 初期表示でチェックボックスを作成
     function renderCheckboxes() {
         const container = document.getElementById('note-choices');
         container.innerHTML = '';
-        const currentData = noteData[selectedClef];
-        
-        currentData.forEach((note, index) => {
+        noteData[selectedClef].forEach((note, index) => {
             const label = document.createElement('label');
             label.className = 'note-checkbox';
-            const isChecked = index < 5 ? 'checked' : ''; // 最初はド〜ソまでにチェック
+            const isChecked = index < 5 ? 'checked' : '';
             label.innerHTML = `<input type="checkbox" value="${index}" ${isChecked}> ${note.name}`;
             container.appendChild(label);
         });
@@ -143,7 +148,6 @@
     }
 
     function startGame() {
-        // チェックされている音だけを抽出
         const checkboxes = document.querySelectorAll('#note-choices input:checked');
         activeNotes = Array.from(checkboxes).map(cb => noteData[selectedClef][cb.value]);
 
@@ -155,11 +159,22 @@
         totalQuestions = parseInt(document.getElementById('question-count').value);
         document.getElementById('setup').classList.add('hidden');
         document.getElementById('game').classList.remove('hidden');
+        
+        // タイマー開始
+        startTime = Date.now();
+        timerInterval = setInterval(updateTimer, 100);
+        
         nextQuestion();
+    }
+
+    function updateTimer() {
+        const elapsed = (Date.now() - startTime) / 1000;
+        document.getElementById('timer-display').innerText = `タイム: ${elapsed.toFixed(1)}秒`;
     }
 
     function nextQuestion() {
         if (currentQuestion >= totalQuestions) {
+            clearInterval(timerInterval); // タイマー停止
             showEndScreen();
             return;
         }
@@ -187,7 +202,7 @@
             resEl.innerText = "⭕ せいかい！";
             resEl.style.color = "red";
             correctCount++;
-            setTimeout(nextQuestion, 600);
+            setTimeout(nextQuestion, 400); // テンポよく進むよう少し短くしました
         } else {
             resEl.innerText = "❌ ちがうよ！";
             resEl.style.color = "blue";
@@ -197,10 +212,11 @@
     function showEndScreen() {
         document.getElementById('game').classList.add('hidden');
         document.getElementById('end').classList.remove('hidden');
+        const finalTime = (Date.now() - startTime) / 1000;
+        document.getElementById('final-time').innerText = `きろく: ${finalTime.toFixed(1)}秒`;
         document.getElementById('score-text').innerText = `${totalQuestions}もんちゅう ${correctCount}もん せいかい！`;
     }
 
-    // 起動時に実行
     renderCheckboxes();
 </script>
 
