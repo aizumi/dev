@@ -3,15 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3音あてクイズ</title>
+    <title>3音あてクイズ Pro</title>
     <style>
         :root {
             --primary-color: #4a90e2;
             --success-color: #48c774;
-            --bg-color: #f5f7fa;
+            --error-color: #ff4757;
+            --bg-color: #f1f3f6;
         }
         body {
-            font-family: 'Helvetica Neue', Arial, sans-serif;
+            font-family: 'Helvetica Neue', Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", sans-serif;
             background-color: var(--bg-color);
             display: flex;
             justify-content: center;
@@ -22,57 +23,92 @@
         .container {
             background: white;
             padding: 2rem;
-            border-radius: 15px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
             width: 90%;
-            max-width: 400px;
+            max-width: 450px;
             text-align: center;
         }
         .screen { display: none; }
         .active { display: block; }
         
-        h1 { color: #333; margin-bottom: 1.5rem; }
+        h1 { color: #333; margin-bottom: 1rem; font-size: 1.5rem; }
         .note-selector {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
+            gap: 8px;
             margin-bottom: 1.5rem;
+            background: #f9f9f9;
+            padding: 10px;
+            border-radius: 10px;
         }
-        .note-item { font-size: 0.9rem; }
+        .note-item { font-size: 0.85rem; display: flex; align-items: center; gap: 4px; }
         
         select, button {
-            padding: 10px 20px;
+            padding: 12px;
             font-size: 1rem;
-            border-radius: 8px;
+            border-radius: 10px;
             border: 1px solid #ccc;
             cursor: pointer;
+            transition: 0.2s;
         }
         .btn-main {
             background-color: var(--primary-color);
             color: white;
             border: none;
             width: 100%;
-            margin-top: 1rem;
+            font-weight: bold;
         }
+        .btn-main:hover { opacity: 0.9; }
+        .btn-main:disabled { background: #ccc; }
+
+        /* 回答表示エリア */
+        .answer-display {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 1.5rem 0;
+            min-height: 50px;
+        }
+        .answer-slot {
+            width: 60px;
+            height: 50px;
+            line-height: 50px;
+            border-bottom: 3px solid #ddd;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
         .answer-btns {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 10px;
-            margin-top: 1.5rem;
+            margin-top: 1rem;
         }
         .btn-note {
-            background: #eee;
-            border: 1px solid #ddd;
-            height: 50px;
+            background: white;
+            border: 2px solid #eee;
             font-weight: bold;
         }
-        .btn-note:active { background: #ddd; }
+        .btn-note:active { background: #e0e0e0; }
+        
+        .control-btns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 1.5rem;
+        }
+        .btn-clear { background: #f8f9fa; color: #666; }
+        .btn-check { background: var(--success-color); color: white; border: none; }
+        
         .replay-btn {
             background: #6c757d;
             color: white;
+            border: none;
             margin-bottom: 1rem;
         }
-        .status { margin-bottom: 1rem; color: #666; }
+        .status { color: #666; font-size: 0.9rem; margin-bottom: 0.5rem; }
     </style>
 </head>
 <body>
@@ -80,11 +116,10 @@
 <div class="container">
     <div id="setup-screen" class="screen active">
         <h1>音当て設定</h1>
-        <p>使う音を選んでください</p>
-        <div class="note-selector" id="checkbox-container">
-            </div>
-        <p>問題数</p>
-        <select id="question-count">
+        <p style="font-size: 0.9rem;">出題範囲を選択</p>
+        <div class="note-selector" id="checkbox-container"></div>
+        <p style="font-size: 0.9rem;">問題数</p>
+        <select id="question-count" style="width: 100%; margin-bottom: 1rem;">
             <option value="3">3問</option>
             <option value="5">5問</option>
         </select>
@@ -94,14 +129,26 @@
     <div id="game-screen" class="screen">
         <div id="current-info" class="status">第 1 / 3 問</div>
         <button class="replay-btn" onclick="playQuestion()">🔊 もういちどきく</button>
-        <div class="answer-btns" id="answer-container">
-            </div>
-        <div id="feedback" style="margin-top: 1rem; height: 1.5rem; font-weight: bold;"></div>
+        
+        <div class="answer-display">
+            <div id="slot-0" class="answer-slot"></div>
+            <div id="slot-1" class="answer-slot"></div>
+            <div id="slot-2" class="answer-slot"></div>
+        </div>
+
+        <div class="answer-btns" id="answer-container"></div>
+
+        <div class="control-btns">
+            <button class="btn-clear" onclick="clearLast()">1つ消す</button>
+            <button id="btn-submit" class="btn-check" onclick="checkAnswer()" disabled>決定</button>
+        </div>
+        
+        <div id="feedback" style="margin-top: 1.5rem; min-height: 3rem; font-weight: bold; line-height: 1.4;"></div>
     </div>
 
     <div id="result-screen" class="screen">
         <h1>結果発表</h1>
-        <p id="final-score" style="font-size: 1.5rem;"></p>
+        <p id="final-score" style="font-size: 1.5rem; font-weight: bold; color: var(--primary-color);"></p>
         <button class="btn-main" onclick="location.reload()">最初に戻る</button>
     </div>
 </div>
@@ -110,26 +157,25 @@
     const notes = ['ド', 'レ', 'ミ', 'ファ', 'ソ', 'ラ', 'シ', 'ド(高)'];
     const freqs = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25];
     
-    let selectedNotes = [];
+    let selectedRangeIndices = [];
     let totalQuestions = 3;
     let currentQuestionIdx = 0;
     let correctCount = 0;
-    let questionSounds = [];
+    let questionSounds = []; // 正解の音(インデックス)配列
+    let userAnswers = [];    // ユーザーが選択した音(インデックス)配列
     let audioCtx = null;
 
-    // 初期化: チェックボックスとボタンの生成
+    // 初期化処理
     const cbContainer = document.getElementById('checkbox-container');
     const ansContainer = document.getElementById('answer-container');
     
     notes.forEach((note, i) => {
-        // 設定用
         cbContainer.innerHTML += `
             <div class="note-item">
                 <input type="checkbox" id="note-${i}" value="${i}" checked>
                 <label for="note-${i}">${note}</label>
             </div>`;
-        // 回答用
-        ansContainer.innerHTML += `<button class="btn-note" onclick="checkAnswer(${i})">${note}</button>`;
+        ansContainer.innerHTML += `<button class="btn-note" onclick="selectNote(${i})">${note}</button>`;
     });
 
     function initAudio() {
@@ -145,17 +191,18 @@
         osc.connect(gain);
         gain.connect(audioCtx.destination);
         osc.start();
-        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.8);
-        osc.stop(audioCtx.currentTime + 0.8);
+        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.6);
+        osc.stop(audioCtx.currentTime + 0.6);
     }
 
     function startGame() {
-        selectedNotes = [];
+        selectedRangeIndices = [];
         notes.forEach((_, i) => {
-            if (document.getElementById(`note-${i}`).checked) selectedNotes.push(i);
+            if (document.getElementById(`note-${i}`).checked) selectedRangeIndices.push(i);
         });
 
-        if (selectedNotes.length < 2) {
+        if (selectedRangeIndices.length < 2) {
             alert("音は2つ以上選択してください");
             return;
         }
@@ -174,13 +221,15 @@
             return;
         }
         
+        userAnswers = [];
+        updateDisplay();
         document.getElementById('current-info').innerText = `第 ${currentQuestionIdx + 1} / ${totalQuestions} 問`;
         document.getElementById('feedback').innerText = "";
+        document.getElementById('btn-submit').disabled = true;
         
-        // ランダムに3音選ぶ
         questionSounds = [];
         for(let i=0; i<3; i++) {
-            const randomIdx = selectedNotes[Math.floor(Math.random() * selectedNotes.length)];
+            const randomIdx = selectedRangeIndices[Math.floor(Math.random() * selectedRangeIndices.length)];
             questionSounds.push(randomIdx);
         }
         
@@ -189,26 +238,51 @@
 
     function playQuestion() {
         questionSounds.forEach((noteIdx, i) => {
-            setTimeout(() => playTone(freqs[noteIdx]), i * 700);
+            setTimeout(() => playTone(freqs[noteIdx]), i * 800);
         });
     }
 
-    // 簡易化のため「3音聴いて、その中の最後の1音を当てる」形式にしています
-    function checkAnswer(userNoteIdx) {
-        const lastNoteIdx = questionSounds[2];
+    function selectNote(index) {
+        if (userAnswers.length < 3) {
+            userAnswers.push(index);
+            playTone(freqs[index]); // 確認用に鳴らす
+            updateDisplay();
+        }
+        if (userAnswers.length === 3) {
+            document.getElementById('btn-submit').disabled = false;
+        }
+    }
+
+    function clearLast() {
+        userAnswers.pop();
+        updateDisplay();
+        document.getElementById('btn-submit').disabled = true;
+        document.getElementById('feedback').innerText = "";
+    }
+
+    function updateDisplay() {
+        for (let i = 0; i < 3; i++) {
+            const slot = document.getElementById(`slot-${i}`);
+            slot.innerText = userAnswers[i] !== undefined ? notes[userAnswers[i]] : "";
+        }
+    }
+
+    function checkAnswer() {
         const feedback = document.getElementById('feedback');
+        const isCorrect = userAnswers.every((val, index) => val === questionSounds[index]);
         
-        if (userNoteIdx === lastNoteIdx) {
-            feedback.innerText = "⭕ 正解！";
-            feedback.style.color = "green";
+        const correctNames = questionSounds.map(i => notes[i]).join(' → ');
+
+        if (isCorrect) {
+            feedback.innerHTML = `<span style="color:var(--success-color)">⭕ 正解！</span><br><small>${correctNames}</small>`;
             correctCount++;
         } else {
-            feedback.innerText = `❌ 残念！正解は「${notes[lastNoteIdx]}」`;
-            feedback.style.color = "red";
+            feedback.innerHTML = `<span style="color:var(--error-color)">❌ 残念...</span><br><small>正解: ${correctNames}</small>`;
         }
 
+        document.getElementById('btn-submit').disabled = true;
         currentQuestionIdx++;
-        setTimeout(nextQuestion, 1500);
+        setTimeout(nextQuestion, 2500);
     }
 
     function showScreen(screenId) {
