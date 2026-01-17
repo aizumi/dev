@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3音あてクイズ Pro</title>
+    <title>ピアノ音当てクイズ</title>
     <style>
         :root {
-            --primary-color: #4a90e2;
-            --success-color: #48c774;
-            --error-color: #ff4757;
-            --bg-color: #f1f3f6;
+            --primary-color: #34495e;
+            --success-color: #27ae60;
+            --error-color: #e74c3c;
+            --bg-color: #ecf0f1;
         }
         body {
-            font-family: 'Helvetica Neue', Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", sans-serif;
+            font-family: 'Helvetica Neue', Arial, "Hiragino Kaku Gothic ProN", sans-serif;
             background-color: var(--bg-color);
             display: flex;
             justify-content: center;
@@ -23,112 +23,94 @@
         .container {
             background: white;
             padding: 2rem;
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            width: 90%;
+            border-radius: 12px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            width: 95%;
             max-width: 450px;
             text-align: center;
         }
         .screen { display: none; }
         .active { display: block; }
         
-        h1 { color: #333; margin-bottom: 1rem; font-size: 1.5rem; }
+        h1 { color: var(--primary-color); margin-bottom: 1.5rem; font-size: 1.4rem; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        
+        /* ピアノの鍵盤をイメージしたセレクター */
         .note-selector {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 8px;
             margin-bottom: 1.5rem;
-            background: #f9f9f9;
-            padding: 10px;
-            border-radius: 10px;
+            text-align: left;
         }
-        .note-item { font-size: 0.85rem; display: flex; align-items: center; gap: 4px; }
+        .note-item { background: #f9f9f9; padding: 8px; border-radius: 6px; font-size: 0.8rem; }
         
-        select, button {
-            padding: 12px;
-            font-size: 1rem;
-            border-radius: 10px;
-            border: 1px solid #ccc;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-        .btn-main {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            width: 100%;
-            font-weight: bold;
-        }
-        .btn-main:hover { opacity: 0.9; }
-        .btn-main:disabled { background: #ccc; }
-
-        /* 回答表示エリア */
         .answer-display {
             display: flex;
             justify-content: center;
-            gap: 10px;
-            margin: 1.5rem 0;
-            min-height: 50px;
+            gap: 15px;
+            margin: 2rem 0;
         }
         .answer-slot {
-            width: 60px;
-            height: 50px;
-            line-height: 50px;
-            border-bottom: 3px solid #ddd;
-            font-size: 1.2rem;
+            width: 50px;
+            height: 60px;
+            line-height: 60px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1.1rem;
             font-weight: bold;
-            color: var(--primary-color);
+            color: #2c3e50;
+            background: #fff;
         }
 
         .answer-btns {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 10px;
-            margin-top: 1rem;
         }
         .btn-note {
             background: white;
-            border: 2px solid #eee;
+            border: 1px solid #ccc;
+            border-bottom: 4px solid #bbb;
+            padding: 15px 5px;
             font-weight: bold;
+            border-radius: 4px;
         }
-        .btn-note:active { background: #e0e0e0; }
+        .btn-note:active { border-bottom-width: 1px; transform: translateY(3px); }
         
         .control-btns {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-top: 1.5rem;
+            gap: 15px;
+            margin-top: 2rem;
         }
-        .btn-clear { background: #f8f9fa; color: #666; }
+        button { cursor: pointer; border-radius: 8px; font-size: 1rem; padding: 12px; transition: 0.2s; }
+        .btn-main { background: var(--primary-color); color: white; border: none; width: 100%; }
+        .btn-clear { background: #95a5a6; color: white; border: none; }
         .btn-check { background: var(--success-color); color: white; border: none; }
+        .btn-check:disabled { background: #bdc3c7; }
+        .replay-btn { background: #8e44ad; color: white; border: none; margin-bottom: 1rem; width: 100%; }
         
-        .replay-btn {
-            background: #6c757d;
-            color: white;
-            border: none;
-            margin-bottom: 1rem;
-        }
-        .status { color: #666; font-size: 0.9rem; margin-bottom: 0.5rem; }
+        .status { font-size: 0.9rem; color: #7f8c8d; margin-bottom: 0.5rem; }
+        #feedback { margin-top: 1rem; min-height: 3rem; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div id="setup-screen" class="screen active">
-        <h1>音当て設定</h1>
-        <p style="font-size: 0.9rem;">出題範囲を選択</p>
+        <h1>🎹 ピアノ音当て設定</h1>
         <div class="note-selector" id="checkbox-container"></div>
-        <p style="font-size: 0.9rem;">問題数</p>
-        <select id="question-count" style="width: 100%; margin-bottom: 1rem;">
+        <p>問題数</p>
+        <select id="question-count" style="width: 100%; margin-bottom: 1.5rem; height: 40px;">
             <option value="3">3問</option>
             <option value="5">5問</option>
         </select>
-        <button class="btn-main" onclick="startGame()">スタート！</button>
+        <button class="btn-main" onclick="startGame()">スタート</button>
     </div>
 
     <div id="game-screen" class="screen">
         <div id="current-info" class="status">第 1 / 3 問</div>
-        <button class="replay-btn" onclick="playQuestion()">🔊 もういちどきく</button>
+        <button class="replay-btn" onclick="playQuestion()">🔊 問題をきく</button>
         
         <div class="answer-display">
             <div id="slot-0" class="answer-slot"></div>
@@ -143,141 +125,131 @@
             <button id="btn-submit" class="btn-check" onclick="checkAnswer()" disabled>決定</button>
         </div>
         
-        <div id="feedback" style="margin-top: 1.5rem; min-height: 3rem; font-weight: bold; line-height: 1.4;"></div>
+        <div id="feedback"></div>
     </div>
 
     <div id="result-screen" class="screen">
         <h1>結果発表</h1>
-        <p id="final-score" style="font-size: 1.5rem; font-weight: bold; color: var(--primary-color);"></p>
-        <button class="btn-main" onclick="location.reload()">最初に戻る</button>
+        <p id="final-score" style="font-size: 1.8rem;"></p>
+        <button class="btn-main" onclick="location.reload()">もう一度あそぶ</button>
     </div>
 </div>
 
 <script>
-    const notes = ['ド', 'レ', 'ミ', 'ファ', 'ソ', 'ラ', 'シ', 'ド(高)'];
+    const notes = ['ド', 'レ', 'ミ', 'ファ', 'ソ', 'ラ', 'シ', 'ド'];
     const freqs = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25];
     
-    let selectedRangeIndices = [];
+    let selectedRange = [];
     let totalQuestions = 3;
     let currentQuestionIdx = 0;
     let correctCount = 0;
-    let questionSounds = []; // 正解の音(インデックス)配列
-    let userAnswers = [];    // ユーザーが選択した音(インデックス)配列
+    let questionSounds = [];
+    let userAnswers = [];
     let audioCtx = null;
 
-    // 初期化処理
     const cbContainer = document.getElementById('checkbox-container');
     const ansContainer = document.getElementById('answer-container');
     
     notes.forEach((note, i) => {
-        cbContainer.innerHTML += `
-            <div class="note-item">
-                <input type="checkbox" id="note-${i}" value="${i}" checked>
-                <label for="note-${i}">${note}</label>
-            </div>`;
-        ansContainer.innerHTML += `<button class="btn-note" onclick="selectNote(${i})">${note}</button>`;
+        const label = i === 7 ? "ド(高)" : note;
+        cbContainer.innerHTML += `<div class="note-item"><input type="checkbox" id="n-${i}" value="${i}" checked><label for="n-${i}">${label}</label></div>`;
+        ansContainer.innerHTML += `<button class="btn-note" onclick="selectNote(${i})">${label}</button>`;
     });
 
     function initAudio() {
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
 
-    function playTone(freq) {
+    // ピアノ風の音を合成する関数
+    function playPiano(freq) {
         initAudio();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.frequency.value = freq;
-        osc.type = 'sine';
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start();
-        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.6);
-        osc.stop(audioCtx.currentTime + 0.6);
+        const now = audioCtx.currentTime;
+        
+        // 基本波 + 倍音を重ねて複雑な音にする
+        const harmonics = [1, 2, 3, 4];
+        const gainValues = [0.5, 0.2, 0.1, 0.05];
+
+        harmonics.forEach((h, i) => {
+            const osc = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            
+            osc.frequency.setValueAtTime(freq * h, now);
+            osc.type = i === 0 ? 'triangle' : 'sine'; // 基音を三角形波にしてピアノの立ち上がりに近づける
+            
+            g.gain.setValueAtTime(0, now);
+            g.gain.linearRampToValueAtTime(gainValues[i], now + 0.02); // 素早いアタック
+            g.gain.exponentialRampToValueAtTime(0.001, now + 1.2);    // 長めの減衰
+            
+            osc.connect(g);
+            g.connect(audioCtx.destination);
+            
+            osc.start(now);
+            osc.stop(now + 1.5);
+        });
     }
 
     function startGame() {
-        selectedRangeIndices = [];
-        notes.forEach((_, i) => {
-            if (document.getElementById(`note-${i}`).checked) selectedRangeIndices.push(i);
-        });
-
-        if (selectedRangeIndices.length < 2) {
-            alert("音は2つ以上選択してください");
-            return;
-        }
+        selectedRange = [];
+        notes.forEach((_, i) => { if (document.getElementById(`n-${i}`).checked) selectedRange.push(i); });
+        if (selectedRange.length < 2) return alert("2つ以上選んでください");
 
         totalQuestions = parseInt(document.getElementById('question-count').value);
         currentQuestionIdx = 0;
         correctCount = 0;
-        
         showScreen('game-screen');
         nextQuestion();
     }
 
     function nextQuestion() {
-        if (currentQuestionIdx >= totalQuestions) {
-            showResult();
-            return;
-        }
-        
+        if (currentQuestionIdx >= totalQuestions) return showResult();
         userAnswers = [];
         updateDisplay();
         document.getElementById('current-info').innerText = `第 ${currentQuestionIdx + 1} / ${totalQuestions} 問`;
         document.getElementById('feedback').innerText = "";
         document.getElementById('btn-submit').disabled = true;
         
-        questionSounds = [];
-        for(let i=0; i<3; i++) {
-            const randomIdx = selectedRangeIndices[Math.floor(Math.random() * selectedRangeIndices.length)];
-            questionSounds.push(randomIdx);
-        }
-        
-        setTimeout(playQuestion, 500);
+        questionSounds = Array.from({length: 3}, () => selectedRange[Math.floor(Math.random() * selectedRange.length)]);
+        setTimeout(playQuestion, 800);
     }
 
     function playQuestion() {
-        questionSounds.forEach((noteIdx, i) => {
-            setTimeout(() => playTone(freqs[noteIdx]), i * 800);
+        questionSounds.forEach((idx, i) => {
+            setTimeout(() => playPiano(freqs[idx]), i * 900);
         });
     }
 
-    function selectNote(index) {
+    function selectNote(i) {
         if (userAnswers.length < 3) {
-            userAnswers.push(index);
-            playTone(freqs[index]); // 確認用に鳴らす
+            userAnswers.push(i);
+            playPiano(freqs[i]);
             updateDisplay();
         }
-        if (userAnswers.length === 3) {
-            document.getElementById('btn-submit').disabled = false;
-        }
+        document.getElementById('btn-submit').disabled = userAnswers.length !== 3;
     }
 
     function clearLast() {
         userAnswers.pop();
         updateDisplay();
         document.getElementById('btn-submit').disabled = true;
-        document.getElementById('feedback').innerText = "";
     }
 
     function updateDisplay() {
         for (let i = 0; i < 3; i++) {
             const slot = document.getElementById(`slot-${i}`);
-            slot.innerText = userAnswers[i] !== undefined ? notes[userAnswers[i]] : "";
+            slot.innerText = userAnswers[i] !== undefined ? (userAnswers[i] === 7 ? "ド" : notes[userAnswers[i]]) : "";
         }
     }
 
     function checkAnswer() {
+        const isCorrect = userAnswers.every((v, i) => v === questionSounds[i]);
         const feedback = document.getElementById('feedback');
-        const isCorrect = userAnswers.every((val, index) => val === questionSounds[index]);
-        
-        const correctNames = questionSounds.map(i => notes[i]).join(' → ');
+        const correctStr = questionSounds.map(i => i === 7 ? "ド(高)" : notes[i]).join(' → ');
 
         if (isCorrect) {
-            feedback.innerHTML = `<span style="color:var(--success-color)">⭕ 正解！</span><br><small>${correctNames}</small>`;
+            feedback.innerHTML = `<span style="color:var(--success-color)">⭕ 正解！</span><br>${correctStr}`;
             correctCount++;
         } else {
-            feedback.innerHTML = `<span style="color:var(--error-color)">❌ 残念...</span><br><small>正解: ${correctNames}</small>`;
+            feedback.innerHTML = `<span style="color:var(--error-color)">❌ 残念...</span><br>正解: ${correctStr}`;
         }
 
         document.getElementById('btn-submit').disabled = true;
@@ -285,9 +257,9 @@
         setTimeout(nextQuestion, 2500);
     }
 
-    function showScreen(screenId) {
+    function showScreen(id) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-        document.getElementById(screenId).classList.add('active');
+        document.getElementById(id).classList.add('active');
     }
 
     function showResult() {
@@ -295,6 +267,5 @@
         document.getElementById('final-score').innerText = `${totalQuestions}問中 ${correctCount}問正解！`;
     }
 </script>
-
 </body>
 </html>
