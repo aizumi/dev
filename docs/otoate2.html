@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>たのしい！ピアノおとあてクイズ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Kosugi+Maru&display=swap');
+        body {
+            font-family: 'Kosugi+Maru', sans-serif;
+            background-color: #fdf2f8;
+        }
+        .key-btn {
+            transition: transform 0.1s, background-color 0.2s;
+        }
+        .key-btn:active {
+            transform: scale(0.95);
+            filter: brightness(0.9);
+        }
+        .bounce {
+            animation: bounce 0.5s infinite alternate;
+        }
+        @keyframes bounce {
+            from { transform: translateY(0); }
+            to { transform: translateY(-5px); }
+        }
+        /* ピアノの鍵盤をイメージした装飾 */
+        .piano-container {
+            border-top: 20px solid #333;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div id="game-container" class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-md text-center border-4 border-pink-200 piano-container">
+        <!-- ヘッダー -->
+        <div class="mb-6">
+            <h1 class="text-3xl font-bold text-indigo-600 mb-2">ピアノおとあて</h1>
+            <p class="text-gray-500">きこえた ピアノの おとを えらんでね！</p>
+        </div>
+
+        <!-- スコア表示 -->
+        <div class="flex justify-between items-center mb-6 bg-indigo-50 p-3 rounded-full border-2 border-indigo-100">
+            <span class="text-lg font-bold text-indigo-700">せいかい：<span id="score-display" class="text-2xl text-pink-600">0</span> / 10</span>
+            <div id="progress-dots" class="flex gap-1"></div>
+        </div>
+
+        <!-- メイン画面 -->
+        <div id="main-ui">
+            <button id="play-btn" class="bg-indigo-500 hover:bg-indigo-600 text-white text-xl font-bold py-6 px-10 rounded-2xl shadow-lg mb-8 w-full transition-all transform hover:scale-105">
+                🎹 ピアノを きく
+            </button>
+
+            <div class="mb-4">
+                <p class="text-sm text-gray-400 mb-2 font-bold">えらんだ おと：</p>
+                <div id="answer-slots" class="flex justify-center gap-2 h-12">
+                    <div class="w-12 h-12 border-b-4 border-2 border-gray-200 rounded-lg flex items-center justify-center text-xl font-bold text-indigo-600 bg-gray-50"></div>
+                    <div class="w-12 h-12 border-b-4 border-2 border-gray-200 rounded-lg flex items-center justify-center text-xl font-bold text-indigo-600 bg-gray-50"></div>
+                    <div class="w-12 h-12 border-b-4 border-2 border-gray-200 rounded-lg flex items-center justify-center text-xl font-bold text-indigo-600 bg-gray-50"></div>
+                </div>
+            </div>
+
+            <!-- 音階ボタン -->
+            <div class="grid grid-cols-4 gap-2 mb-8">
+                <button onclick="inputNote('ド')" class="key-btn bg-white border-2 border-gray-300 text-gray-800 p-4 rounded-lg font-bold shadow-sm hover:bg-gray-50">ド</button>
+                <button onclick="inputNote('レ')" class="key-btn bg-white border-2 border-gray-300 text-gray-800 p-4 rounded-lg font-bold shadow-sm hover:bg-gray-50">レ</button>
+                <button onclick="inputNote('ミ')" class="key-btn bg-white border-2 border-gray-300 text-gray-800 p-4 rounded-lg font-bold shadow-sm hover:bg-gray-50">ミ</button>
+                <button onclick="inputNote('ファ')" class="key-btn bg-white border-2 border-gray-300 text-gray-800 p-4 rounded-lg font-bold shadow-sm hover:bg-gray-50">ファ</button>
+                <button onclick="inputNote('ソ')" class="key-btn bg-white border-2 border-gray-300 text-gray-800 p-4 rounded-lg font-bold shadow-sm hover:bg-gray-50">ソ</button>
+                <button onclick="inputNote('ラ')" class="key-btn bg-white border-2 border-gray-300 text-gray-800 p-4 rounded-lg font-bold shadow-sm hover:bg-gray-50">ラ</button>
+                <button onclick="inputNote('シ')" class="key-btn bg-white border-2 border-gray-300 text-gray-800 p-4 rounded-lg font-bold shadow-sm hover:bg-gray-50">シ</button>
+                <button onclick="clearInput()" class="bg-red-100 text-red-500 p-4 rounded-lg font-bold shadow-sm hover:bg-red-200">けす</button>
+            </div>
+
+            <button id="check-btn" class="bg-pink-500 hover:bg-pink-600 text-white text-xl font-bold py-4 px-8 rounded-full shadow-lg w-full disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled>
+                こたえる！
+            </button>
+        </div>
+
+        <!-- メッセージ表示用 -->
+        <div id="feedback" class="mt-6 text-xl font-bold h-8"></div>
+    </div>
+
+    <!-- クリア画面 -->
+    <div id="clear-screen" class="fixed inset-0 bg-indigo-600 flex flex-col items-center justify-center text-white p-6 text-center hidden">
+        <div class="text-8xl mb-6 bounce">🎉</div>
+        <h2 class="text-4xl font-bold mb-4">すごすぎる！！</h2>
+        <p class="text-2xl mb-8">10もん ぜんぶ せいかい！<br>きみは ピアノの めいじんだね！</p>
+        <button onclick="location.reload()" class="bg-white text-indigo-600 font-bold py-4 px-10 rounded-full text-xl shadow-2xl hover:bg-gray-100">
+            もういちど あそぶ
+        </button>
+    </div>
+
+    <script>
+        const frequencies = {
+            'ド': 261.63,
+            'レ': 293.66,
+            'ミ': 329.63,
+            'ファ': 349.23,
+            'ソ': 392.00,
+            'ラ': 440.00,
+            'シ': 493.88
+        };
+        const noteNames = Object.keys(frequencies);
+        
+        let audioCtx = null;
+        let targetNotes = [];
+        let userNotes = [];
+        let score = 0;
+        const goal = 10;
+        let isPlaying = false;
+
+        // ピアノ風の音を作る関数
+        function playPianoTone(freq, duration = 1.0) {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            
+            const now = audioCtx.currentTime;
+            const mainGain = audioCtx.createGain();
+            mainGain.connect(audioCtx.destination);
+            
+            const createOvertone = (f, volume, decay) => {
+                const osc = audioCtx.createOscillator();
+                const g = audioCtx.createGain();
+                
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(f, now);
+                
+                g.gain.setValueAtTime(0, now);
+                g.gain.linearRampToValueAtTime(volume, now + 0.02);
+                g.gain.exponentialRampToValueAtTime(0.001, now + decay);
+                
+                osc.connect(g);
+                g.connect(mainGain);
+                
+                osc.start(now);
+                osc.stop(now + decay);
+            };
+
+            createOvertone(freq, 0.4, duration);      
+            createOvertone(freq * 2, 0.15, duration * 0.8); 
+            createOvertone(freq * 3, 0.08, duration * 0.5); 
+            createOvertone(freq * 4, 0.04, duration * 0.3); 
+        }
+
+        function generateQuestion() {
+            targetNotes = [];
+            for (let i = 0; i < 3; i++) {
+                const randomNote = noteNames[Math.floor(Math.random() * noteNames.length)];
+                targetNotes.push(randomNote);
+            }
+            userNotes = [];
+            updateAnswerUI();
+            document.getElementById('feedback').innerText = "";
+        }
+
+        async function playQuestion() {
+            if (isPlaying) return;
+            if (targetNotes.length === 0) generateQuestion();
+            
+            isPlaying = true;
+            const playBtn = document.getElementById('play-btn');
+            playBtn.disabled = true;
+            playBtn.innerText = "きいてね...🎼";
+
+            for (const noteName of targetNotes) {
+                playPianoTone(frequencies[noteName], 1.2);
+                await new Promise(r => setTimeout(r, 800));
+            }
+
+            playBtn.disabled = false;
+            playBtn.innerText = "🎹 もういちど きく";
+            isPlaying = false;
+        }
+
+        function inputNote(note) {
+            if (userNotes.length < 3 && !isPlaying) {
+                userNotes.push(note);
+                playPianoTone(frequencies[note], 0.8);
+                updateAnswerUI();
+            }
+        }
+
+        function clearInput() {
+            userNotes = [];
+            updateAnswerUI();
+        }
+
+        function updateAnswerUI() {
+            const slots = document.getElementById('answer-slots').children;
+            for (let i = 0; i < 3; i++) {
+                slots[i].innerText = userNotes[i] || "";
+                if (userNotes[i]) {
+                    slots[i].classList.replace('bg-gray-50', 'bg-white');
+                    slots[i].classList.replace('border-gray-200', 'border-indigo-400');
+                } else {
+                    slots[i].className = "w-12 h-12 border-b-4 border-2 border-gray-200 rounded-lg flex items-center justify-center text-xl font-bold text-indigo-600 bg-gray-50";
+                }
+            }
+            document.getElementById('check-btn').disabled = userNotes.length !== 3 || isPlaying;
+        }
+
+        function checkAnswer() {
+            if (isPlaying) return;
+            const feedback = document.getElementById('feedback');
+            const isCorrect = JSON.stringify(targetNotes) === JSON.stringify(userNotes);
+
+            if (isCorrect) {
+                score++;
+                feedback.innerText = "✨ せいかい！！ ✨";
+                feedback.className = "mt-6 text-xl font-bold text-green-500 bounce";
+                
+                playPianoTone(frequencies['ド'], 0.5);
+                setTimeout(() => playPianoTone(frequencies['ミ'], 0.5), 100);
+                setTimeout(() => playPianoTone(frequencies['ソ'], 0.5), 200);
+                setTimeout(() => playPianoTone(frequencies['ド']*2, 1.0), 300);
+                
+                updateScoreBoard();
+                
+                if (score >= goal) {
+                    setTimeout(() => {
+                        document.getElementById('clear-screen').classList.remove('hidden');
+                    }, 1200);
+                } else {
+                    // 1. 新しい問題を作成
+                    // 2. しばらく待ってから自動で再生
+                    setTimeout(() => {
+                        generateQuestion();
+                        playQuestion();
+                    }, 2000);
+                }
+            } else {
+                feedback.innerText = "おしい！ もういっかい きいてみて！";
+                feedback.className = "mt-6 text-xl font-bold text-orange-400";
+                playPianoTone(150, 0.5); 
+                userNotes = [];
+                setTimeout(updateAnswerUI, 1000);
+            }
+        }
+
+        function updateScoreBoard() {
+            document.getElementById('score-display').innerText = score;
+            const dots = document.getElementById('progress-dots');
+            dots.innerHTML = "";
+            for (let i = 0; i < goal; i++) {
+                const dot = document.createElement('div');
+                dot.className = `w-3 h-3 rounded-full shadow-inner ${i < score ? 'bg-pink-500' : 'bg-gray-200'}`;
+                dots.appendChild(dot);
+            }
+        }
+
+        document.getElementById('play-btn').onclick = playQuestion;
+        document.getElementById('check-btn').onclick = checkAnswer;
+
+        updateScoreBoard();
+        generateQuestion();
+    </script>
+</body>
+</html>
