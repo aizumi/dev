@@ -18,7 +18,7 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
+            min-height: 100vh;
             background-color: #f0f0f0;
             font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
             overflow: hidden;
@@ -27,7 +27,7 @@
 
         #game-container {
             position: relative;
-            width: 100%;
+            width: 95%; /* 横幅が狭い端末のために少し余裕を持たせる */
             max-width: 600px;
             aspect-ratio: 4 / 3;
             background-color: #fff;
@@ -37,21 +37,23 @@
             overflow: hidden;
         }
 
-        /* ゲームタイトルのスタイル */
+        /* ゲームタイトルのスタイル（レスポンシブ対応） */
         #game-title {
             position: absolute;
-            top: 20px;
+            top: 5%;
             width: 100%;
             text-align: center;
-            font-size: 32px;
+            font-size: clamp(18px, 6vw, 32px); /* 端末幅に合わせて文字サイズを調整 */
             font-weight: 900;
             color: #FFD700;
-            text-shadow: 3px 3px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+            text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
             z-index: 10;
             opacity: 0;
             transition: opacity 1s ease-in-out;
             pointer-events: none;
-            letter-spacing: 2px;
+            letter-spacing: 1px;
+            padding: 0 10px;
+            box-sizing: border-box;
         }
 
         canvas {
@@ -70,13 +72,13 @@
         }
 
         #jump-button {
-            width: 100px;
-            height: 100px;
+            width: 80px; /* 少し小さくして押しやすく */
+            height: 80px;
             background-color: #FF4081;
             color: white;
             border: 6px solid #c2185b;
             border-radius: 50%;
-            font-size: 18px;
+            font-size: 16px;
             font-weight: bold;
             box-shadow: 0 5px 0 #880e4f;
             cursor: pointer;
@@ -98,7 +100,9 @@
             left: 50%;
             transform: translate(-50%, -50%);
             background: rgba(255, 255, 255, 0.95);
-            padding: 25px;
+            padding: 20px;
+            width: 80%;
+            max-width: 300px;
             border-radius: 20px;
             text-align: center;
             display: none;
@@ -107,12 +111,12 @@
             box-shadow: 0 0 30px rgba(0,0,0,0.3);
         }
 
-        #message-overlay h2 { margin-top: 0; color: #d32f2f; font-size: 28px; }
-        #message-overlay p { font-size: 18px; color: #333; }
+        #message-overlay h2 { margin-top: 0; color: #d32f2f; font-size: 22px; }
+        #message-overlay p { font-size: 16px; color: #333; }
         #message-overlay button {
             margin-top: 10px;
-            padding: 12px 30px;
-            font-size: 18px;
+            padding: 10px 20px;
+            font-size: 16px;
             font-weight: bold;
             background: #4CAF50;
             color: white;
@@ -124,15 +128,15 @@
 
         .score-display {
             position: absolute;
-            top: 70px; /* タイトルの下に配置 */
+            top: 15%; /* タイトルの下に動的に配置 */
             left: 10px;
-            font-size: 24px;
+            font-size: clamp(14px, 4vw, 24px);
             font-weight: bold;
             color: #333;
             text-shadow: 1px 1px 0 white;
             z-index: 5;
             background: rgba(255,255,255,0.5);
-            padding: 5px 15px;
+            padding: 3px 10px;
             border-radius: 20px;
             opacity: 0;
             transition: opacity 0.5s;
@@ -142,7 +146,6 @@
 <body>
 
     <div id="game-container">
-        <!-- ゲームタイトル追加 -->
         <div id="game-title">はやとのぼうそうチャリゲーム</div>
         
         <div id="score-box" class="score-display">スコア: <span id="score-val">0</span></div>
@@ -150,14 +153,14 @@
         
         <div id="message-overlay">
             <h2 id="msg-title">✨おめでとう！✨</h2>
-            <p id="msg-text">1500てん とっぱ！<br>ふでばこをさがそう！</p>
+            <p id="msg-text">ふでばこをさがそう</p>
             <button onclick="closeMessage()">もっと あそぶ！</button>
         </div>
     </div>
 
     <div class="ui-container">
-        <div id="jump-button">ジャンプ！</div>
-        <p style="margin: 0; color: #666; font-size: 14px;">（パソコンはスペースキーでもOK）</p>
+        <div id="jump-button">ジャンプ</div>
+        <p style="margin: 0; color: #666; font-size: 12px;">（パソコンはスペースキーでもOK）</p>
     </div>
 
 <script>
@@ -179,6 +182,7 @@
     };
 
     function resize() {
+        // 内部解像度は固定し、CSSでスケーリングさせる
         canvas.width = 800;
         canvas.height = 600;
     }
@@ -228,7 +232,7 @@
         }
     }
 
-    jumpBtn.addEventListener('touchstart', (e) => { e.preventDefault(); handleJump(); });
+    jumpBtn.addEventListener('touchstart', (e) => { e.preventDefault(); handleJump(); }, {passive: false});
     jumpBtn.addEventListener('mousedown', handleJump);
     window.addEventListener('keydown', (e) => { if(e.code === 'Space') { e.preventDefault(); handleJump(); } });
 
@@ -238,7 +242,7 @@
         gameActive = false;
         frameCount = 0;
         scoreBox.style.opacity = "0";
-        gameTitleDiv.style.opacity = "0"; // 演出中は隠す
+        gameTitleDiv.style.opacity = "0";
         container.style.backgroundColor = "#fff";
         
         if (animationId) cancelAnimationFrame(animationId);
@@ -329,7 +333,7 @@
             if (introTimer === introDuration) {
                 gameActive = true;
                 scoreBox.style.opacity = "1";
-                gameTitleDiv.style.opacity = "1"; // ゲーム開始でタイトル表示
+                gameTitleDiv.style.opacity = "1";
                 container.style.backgroundColor = "var(--bg-color)";
             }
         }
