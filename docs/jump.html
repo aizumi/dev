@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ぴょんぴょん大冒険！</title>
+    <style>
+        :root {
+            --bg-color: #87CEEB;
+            --ground-color: #8B4513;
+            --grass-color: #2E8B57;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+            font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            aspect-ratio: 4 / 3;
+            background-color: var(--bg-color);
+            border: 4px solid #333;
+            border-radius: 12px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .ui-container {
+            margin-top: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+        }
+
+        #jump-button {
+            width: 120px;
+            height: 120px;
+            background-color: #FF4081;
+            color: white;
+            border: 8px solid #c2185b;
+            border-radius: 50%;
+            font-size: 20px;
+            font-weight: bold;
+            box-shadow: 0 6px 0 #880e4f;
+            cursor: pointer;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #jump-button:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 #880e4f;
+        }
+
+        #message-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            display: none;
+            border: 4px solid #FFD700;
+            z-index: 10;
+        }
+
+        #message-overlay h2 { margin-top: 0; color: #d32f2f; }
+        #message-overlay button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .score-display {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            text-shadow: 1px 1px 0 white;
+            z-index: 5;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <div class="score-display">スコア: <span id="score-val">0</span></div>
+        <canvas id="gameCanvas"></canvas>
+        
+        <!-- クリアメッセージ -->
+        <div id="message-overlay">
+            <h2 id="msg-title">すごい！</h2>
+            <p id="msg-text">ふでばこをみよう</p>
+            <button onclick="closeMessage()">つぎへ</button>
+        </div>
+    </div>
+
+    <div class="ui-container">
+        <div id="jump-button">ジャンプ！</div>
+        <p style="margin: 0; color: #666; font-size: 14px;">（パソコンはスペースキーでもOK）</p>
+    </div>
+
+<script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const scoreVal = document.getElementById("score-val");
+    const jumpBtn = document.getElementById("jump-button");
+    const overlay = document.getElementById("message-overlay");
+
+    // キャンバスサイズの適正化
+    function resize() {
+        canvas.width = 800;
+        canvas.height = 600;
+    }
+    resize();
+
+    // ゲーム状態
+    let score = 0;
+    let gameActive = true;
+    let paused = false;
+    let highscoreReached = false;
+
+    // 背景の装飾（雲と山）
+    const clouds = [
+        {x: 100, y: 50, s: 0.5},
+        {x: 400, y: 80, s: 0.3},
+        {x: 700, y: 40, s: 0.4}
+    ];
+
+    const player = {
+        x: 80,
+        y: 450,
+        w: 40,
+        h: 60,
+        dy: 0,
+        jumpForce: 16,
+        gravity: 0.7,
+        grounded: false,
+        animFrame: 0
+    };
+
+    const obstacles = [];
+    let frameCount = 0;
+
+    // 入力処理
+    function handleJump() {
+        if (!gameActive) {
+            restart();
+            return;
+        }
+        if (player.grounded && !paused) {
+            player.dy = -player.jumpForce;
+            player.grounded = false;
+        }
+    }
+
+    jumpBtn.addEventListener('touchstart', (e) => { e.preventDefault(); handleJump(); });
+    jumpBtn.addEventListener('mousedown', handleJump);
+    window.addEventListener('keydown', (e) => { if(e.code === 'Space') handleJump(); });
+
+    function restart() {
+        score = 0;
+        scoreVal.textContent = score;
+        obstacles.length = 0;
+        gameActive = true;
+        highscoreReached = false;
+        player.y = 450;
+        player.dy = 0;
+        overlay.style.display = "none";
+        paused = false;
+        requestAnimationFrame(update);
+    }
+
+    function closeMessage() {
+        overlay.style.display = "none";
+        paused = false;
+        requestAnimationFrame(update);
+    }
+
+    function drawHuman(x, y, frame) {
+        ctx.fillStyle = "#FFCC80"; // 肌
+        // 頭
+        ctx.fillRect(x + 10, y, 20, 20);
+        // 体
+        ctx.fillStyle = "#2196F3"; // 服
+        ctx.fillRect(x + 5, y + 20, 30, 25);
+        // 足（アニメーション）
+        ctx.fillStyle = "#333";
+        let legOffset = Math.sin(frame * 0.2) * 5;
+        if (!player.grounded) legOffset = 5;
+        ctx.fillRect(x + 8, y + 45, 10, 15 + (player.grounded ? legOffset : 0));
+        ctx.fillRect(x + 22, y + 45, 10, 15 + (player.grounded ? -legOffset : 0));
+        // 目
+        ctx.fillStyle = "black";
+        ctx.fillRect(x + 22, y + 6, 4, 4);
+    }
+
+    function drawBackground() {
+        // 山
+        ctx.fillStyle = "#45a049";
+        ctx.beginPath();
+        ctx.moveTo(0, 500); ctx.lineTo(200, 250); ctx.lineTo(400, 500); ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(300, 500); ctx.lineTo(550, 300); ctx.lineTo(800, 500); ctx.fill();
+
+        // 雲
+        ctx.fillStyle = "white";
+        clouds.forEach(c => {
+            ctx.beginPath();
+            ctx.arc(c.x, c.y, 20, 0, Math.PI * 2);
+            ctx.arc(c.x + 15, c.y - 10, 25, 0, Math.PI * 2);
+            ctx.arc(c.x + 40, c.y, 20, 0, Math.PI * 2);
+            ctx.fill();
+            c.x -= c.s;
+            if (c.x < -60) c.x = 850;
+        });
+
+        // 地面
+        ctx.fillStyle = "#8B4513";
+        ctx.fillRect(0, 500, 800, 100);
+        ctx.fillStyle = "#2E8B57";
+        ctx.fillRect(0, 500, 800, 15);
+    }
+
+    function update() {
+        if (!gameActive || paused) return;
+
+        player.dy += player.gravity;
+        player.y += player.dy;
+
+        if (player.y > 450) {
+            player.y = 450;
+            player.dy = 0;
+            player.grounded = true;
+        }
+
+        frameCount++;
+        player.animFrame++;
+
+        // 障害物の生成
+        if (frameCount % 100 === 0) {
+            obstacles.push({
+                x: 850,
+                y: 460,
+                w: 40,
+                h: 40,
+                color: "#d32f2f"
+            });
+        }
+
+        for (let i = obstacles.length - 1; i >= 0; i--) {
+            obstacles[i].x -= (6 + score / 500);
+
+            // 当たり判定
+            if (player.x < obstacles[i].x + obstacles[i].w &&
+                player.x + player.w > obstacles[i].x &&
+                player.y < obstacles[i].y + obstacles[i].h &&
+                player.y + player.h > obstacles[i].y) {
+                gameActive = false;
+            }
+
+            if (obstacles[i].x + obstacles[i].w < 0) {
+                obstacles.splice(i, 1);
+                score += 100;
+                scoreVal.textContent = score;
+
+                // 1000点ボーナス
+                if (score >= 1500 && !highscoreReached) {
+                    highscoreReached = true;
+                    paused = true;
+                    overlay.style.display = "block";
+                }
+            }
+        }
+
+        draw();
+        requestAnimationFrame(update);
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawBackground();
+
+        // 障害物（トゲのような箱）
+        for (let ob of obstacles) {
+            ctx.fillStyle = ob.color;
+            ctx.fillRect(ob.x, ob.y, ob.w, ob.h);
+            ctx.strokeStyle = "white";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(ob.x + 5, ob.y + 5, ob.w - 10, ob.h - 10);
+        }
+
+        drawHuman(player.x, player.y, player.animFrame);
+
+        if (!gameActive) {
+            ctx.fillStyle = "rgba(0,0,0,0.6)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "white";
+            ctx.textAlign = "center";
+            ctx.font = "bold 40px sans-serif";
+            ctx.fillText("ゲームオーバー！", 400, 280);
+            ctx.font = "24px sans-serif";
+            ctx.fillText("ボタンをおして もういっかい！", 400, 340);
+        }
+    }
+
+    update();
+</script>
+</body>
+</html>
