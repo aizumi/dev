@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ぴょんぴょん大冒険！</title>
+    <title>はやとのぼうそうチャリゲーム</title>
     <style>
         :root {
             --bg-color: #87CEEB;
@@ -30,11 +30,28 @@
             width: 100%;
             max-width: 600px;
             aspect-ratio: 4 / 3;
-            background-color: var(--bg-color);
+            background-color: #fff;
             border: 4px solid #333;
             border-radius: 12px;
             box-shadow: 0 10px 20px rgba(0,0,0,0.2);
             overflow: hidden;
+        }
+
+        /* ゲームタイトルのスタイル */
+        #game-title {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            text-align: center;
+            font-size: 32px;
+            font-weight: 900;
+            color: #FFD700;
+            text-shadow: 3px 3px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+            z-index: 10;
+            opacity: 0;
+            transition: opacity 1s ease-in-out;
+            pointer-events: none;
+            letter-spacing: 2px;
         }
 
         canvas {
@@ -53,15 +70,15 @@
         }
 
         #jump-button {
-            width: 120px;
-            height: 120px;
+            width: 100px;
+            height: 100px;
             background-color: #FF4081;
             color: white;
-            border: 8px solid #c2185b;
+            border: 6px solid #c2185b;
             border-radius: 50%;
-            font-size: 20px;
+            font-size: 18px;
             font-weight: bold;
-            box-shadow: 0 6px 0 #880e4f;
+            box-shadow: 0 5px 0 #880e4f;
             cursor: pointer;
             user-select: none;
             -webkit-tap-highlight-color: transparent;
@@ -71,7 +88,7 @@
         }
 
         #jump-button:active {
-            transform: translateY(4px);
+            transform: translateY(3px);
             box-shadow: 0 2px 0 #880e4f;
         }
 
@@ -80,49 +97,61 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(255, 255, 255, 0.9);
-            padding: 20px;
-            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 25px;
+            border-radius: 20px;
             text-align: center;
             display: none;
-            border: 4px solid #FFD700;
-            z-index: 10;
+            border: 6px solid #FFD700;
+            z-index: 20;
+            box-shadow: 0 0 30px rgba(0,0,0,0.3);
         }
 
-        #message-overlay h2 { margin-top: 0; color: #d32f2f; }
+        #message-overlay h2 { margin-top: 0; color: #d32f2f; font-size: 28px; }
+        #message-overlay p { font-size: 18px; color: #333; }
         #message-overlay button {
-            padding: 10px 20px;
-            font-size: 16px;
+            margin-top: 10px;
+            padding: 12px 30px;
+            font-size: 18px;
+            font-weight: bold;
             background: #4CAF50;
             color: white;
             border: none;
-            border-radius: 5px;
+            border-radius: 30px;
             cursor: pointer;
+            box-shadow: 0 4px 0 #2E7D32;
         }
 
         .score-display {
             position: absolute;
-            top: 10px;
+            top: 70px; /* タイトルの下に配置 */
             left: 10px;
             font-size: 24px;
             font-weight: bold;
             color: #333;
             text-shadow: 1px 1px 0 white;
             z-index: 5;
+            background: rgba(255,255,255,0.5);
+            padding: 5px 15px;
+            border-radius: 20px;
+            opacity: 0;
+            transition: opacity 0.5s;
         }
     </style>
 </head>
 <body>
 
     <div id="game-container">
-        <div class="score-display">スコア: <span id="score-val">0</span></div>
+        <!-- ゲームタイトル追加 -->
+        <div id="game-title">はやとのぼうそうチャリゲーム</div>
+        
+        <div id="score-box" class="score-display">スコア: <span id="score-val">0</span></div>
         <canvas id="gameCanvas"></canvas>
         
-        <!-- クリアメッセージ -->
         <div id="message-overlay">
-            <h2 id="msg-title">すごい！</h2>
-            <p id="msg-text">ふでばこをみよう</p>
-            <button onclick="closeMessage()">つぎへ</button>
+            <h2 id="msg-title">✨おめでとう！✨</h2>
+            <p id="msg-text">1500てん とっぱ！<br>ふでばこをさがそう！</p>
+            <button onclick="closeMessage()">もっと あそぶ！</button>
         </div>
     </div>
 
@@ -135,23 +164,36 @@
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
     const scoreVal = document.getElementById("score-val");
+    const scoreBox = document.getElementById("score-box");
+    const gameTitleDiv = document.getElementById("game-title");
     const jumpBtn = document.getElementById("jump-button");
     const overlay = document.getElementById("message-overlay");
+    const container = document.getElementById("game-container");
 
-    // キャンバスサイズの適正化
+    const bikeImage = new Image();
+    bikeImage.src = 'https://aizumi.github.io/dev/bike.png';
+    let imageLoaded = false;
+    bikeImage.onload = () => { 
+        imageLoaded = true;
+        if(!animationId) startIntro(); 
+    };
+
     function resize() {
         canvas.width = 800;
         canvas.height = 600;
     }
     resize();
 
-    // ゲーム状態
     let score = 0;
-    let gameActive = true;
+    let gameActive = false;
     let paused = false;
     let highscoreReached = false;
+    let animationId = null;
 
-    // 背景の装飾（雲と山）
+    let introTimer = 0;
+    const introDuration = 300; 
+    let cameraScale = 5.0; 
+
     const clouds = [
         {x: 100, y: 50, s: 0.5},
         {x: 400, y: 80, s: 0.3},
@@ -160,22 +202,23 @@
 
     const player = {
         x: 80,
-        y: 450,
-        w: 40,
-        h: 60,
+        y: 430,
+        w: 80,
+        h: 80,
         dy: 0,
         jumpForce: 16,
         gravity: 0.7,
         grounded: false,
-        animFrame: 0
+        rotation: 0
     };
 
-    const obstacles = [];
+    let obstacles = [];
     let frameCount = 0;
 
-    // 入力処理
     function handleJump() {
-        if (!gameActive) {
+        if (introTimer < introDuration) return; 
+        
+        if (!gameActive && !paused) {
             restart();
             return;
         }
@@ -187,54 +230,73 @@
 
     jumpBtn.addEventListener('touchstart', (e) => { e.preventDefault(); handleJump(); });
     jumpBtn.addEventListener('mousedown', handleJump);
-    window.addEventListener('keydown', (e) => { if(e.code === 'Space') handleJump(); });
+    window.addEventListener('keydown', (e) => { if(e.code === 'Space') { e.preventDefault(); handleJump(); } });
+
+    function startIntro() {
+        introTimer = 0;
+        cameraScale = 5.0;
+        gameActive = false;
+        frameCount = 0;
+        scoreBox.style.opacity = "0";
+        gameTitleDiv.style.opacity = "0"; // 演出中は隠す
+        container.style.backgroundColor = "#fff";
+        
+        if (animationId) cancelAnimationFrame(animationId);
+        animationId = requestAnimationFrame(update);
+    }
 
     function restart() {
         score = 0;
         scoreVal.textContent = score;
-        obstacles.length = 0;
-        gameActive = true;
+        obstacles = [];
+        gameActive = false;
         highscoreReached = false;
-        player.y = 450;
+        player.y = 430;
         player.dy = 0;
+        player.rotation = 0;
+        player.grounded = true;
+        frameCount = 0;
         overlay.style.display = "none";
         paused = false;
-        requestAnimationFrame(update);
+        startIntro();
     }
 
     function closeMessage() {
         overlay.style.display = "none";
         paused = false;
-        requestAnimationFrame(update);
     }
 
-    function drawHuman(x, y, frame) {
-        ctx.fillStyle = "#FFCC80"; // 肌
-        // 頭
-        ctx.fillRect(x + 10, y, 20, 20);
-        // 体
-        ctx.fillStyle = "#2196F3"; // 服
-        ctx.fillRect(x + 5, y + 20, 30, 25);
-        // 足（アニメーション）
-        ctx.fillStyle = "#333";
-        let legOffset = Math.sin(frame * 0.2) * 5;
-        if (!player.grounded) legOffset = 5;
-        ctx.fillRect(x + 8, y + 45, 10, 15 + (player.grounded ? legOffset : 0));
-        ctx.fillRect(x + 22, y + 45, 10, 15 + (player.grounded ? -legOffset : 0));
-        // 目
-        ctx.fillStyle = "black";
-        ctx.fillRect(x + 22, y + 6, 4, 4);
+    function drawBike(x, y, w, h) {
+        ctx.save();
+        ctx.translate(x + w / 2, y + h / 2);
+        
+        if (gameActive && !player.grounded) {
+            player.rotation = Math.max(-0.3, player.dy * 0.02);
+        } else {
+            player.rotation = 0;
+        }
+        ctx.rotate(player.rotation);
+
+        if (imageLoaded) {
+            ctx.drawImage(bikeImage, -w / 2, -h / 2, w, h);
+        } else {
+            ctx.fillStyle = "#FF4081";
+            ctx.fillRect(-w/2, -h/2, w, h);
+        }
+        ctx.restore();
     }
 
-    function drawBackground() {
-        // 山
+    function drawBackground(opacity = 1) {
+        ctx.globalAlpha = opacity;
+        ctx.fillStyle = "#87CEEB";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
         ctx.fillStyle = "#45a049";
         ctx.beginPath();
         ctx.moveTo(0, 500); ctx.lineTo(200, 250); ctx.lineTo(400, 500); ctx.fill();
         ctx.beginPath();
         ctx.moveTo(300, 500); ctx.lineTo(550, 300); ctx.lineTo(800, 500); ctx.fill();
 
-        // 雲
         ctx.fillStyle = "white";
         clouds.forEach(c => {
             ctx.beginPath();
@@ -242,100 +304,121 @@
             ctx.arc(c.x + 15, c.y - 10, 25, 0, Math.PI * 2);
             ctx.arc(c.x + 40, c.y, 20, 0, Math.PI * 2);
             ctx.fill();
-            c.x -= c.s;
+            if (gameActive) c.x -= c.s;
             if (c.x < -60) c.x = 850;
         });
 
-        // 地面
         ctx.fillStyle = "#8B4513";
         ctx.fillRect(0, 500, 800, 100);
         ctx.fillStyle = "#2E8B57";
         ctx.fillRect(0, 500, 800, 15);
+        ctx.globalAlpha = 1.0;
     }
 
     function update() {
-        if (!gameActive || paused) return;
-
-        player.dy += player.gravity;
-        player.y += player.dy;
-
-        if (player.y > 450) {
-            player.y = 450;
-            player.dy = 0;
-            player.grounded = true;
+        if (paused) {
+            animationId = requestAnimationFrame(update);
+            return;
         }
 
-        frameCount++;
-        player.animFrame++;
-
-        // 障害物の生成
-        if (frameCount % 100 === 0) {
-            obstacles.push({
-                x: 850,
-                y: 460,
-                w: 40,
-                h: 40,
-                color: "#d32f2f"
-            });
+        if (introTimer < introDuration) {
+            introTimer++;
+            let progress = introTimer / introDuration;
+            cameraScale = 5.0 - (4.0 * Math.pow(progress, 0.6)); 
+            
+            if (introTimer === introDuration) {
+                gameActive = true;
+                scoreBox.style.opacity = "1";
+                gameTitleDiv.style.opacity = "1"; // ゲーム開始でタイトル表示
+                container.style.backgroundColor = "var(--bg-color)";
+            }
         }
 
-        for (let i = obstacles.length - 1; i >= 0; i--) {
-            obstacles[i].x -= (6 + score / 500);
+        if (gameActive) {
+            player.dy += player.gravity;
+            player.y += player.dy;
 
-            // 当たり判定
-            if (player.x < obstacles[i].x + obstacles[i].w &&
-                player.x + player.w > obstacles[i].x &&
-                player.y < obstacles[i].y + obstacles[i].h &&
-                player.y + player.h > obstacles[i].y) {
-                gameActive = false;
+            if (player.y > 430) {
+                player.y = 430;
+                player.dy = 0;
+                player.grounded = true;
             }
 
-            if (obstacles[i].x + obstacles[i].w < 0) {
-                obstacles.splice(i, 1);
-                score += 100;
-                scoreVal.textContent = score;
+            frameCount++;
 
-                // 1000点ボーナス
-                if (score >= 1500 && !highscoreReached) {
-                    highscoreReached = true;
-                    paused = true;
-                    overlay.style.display = "block";
+            if (frameCount % 100 === 0) {
+                obstacles.push({
+                    x: 850, y: 460, w: 40, h: 40, color: "#d32f2f"
+                });
+            }
+
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                obstacles[i].x -= (6 + score / 500);
+
+                const hitBoxShrink = 15;
+                if (player.x + hitBoxShrink < obstacles[i].x + obstacles[i].w &&
+                    player.x + player.w - hitBoxShrink > obstacles[i].x &&
+                    player.y + hitBoxShrink < obstacles[i].y + obstacles[i].h &&
+                    player.y + player.h - hitBoxShrink > obstacles[i].y) {
+                    gameActive = false;
+                }
+
+                if (obstacles[i].x + obstacles[i].w < 0) {
+                    obstacles.splice(i, 1);
+                    score += 100;
+                    scoreVal.textContent = score;
+
+                    if (score >= 1500 && !highscoreReached) {
+                        highscoreReached = true;
+                        paused = true;
+                        overlay.style.display = "block";
+                    }
                 }
             }
         }
 
         draw();
-        requestAnimationFrame(update);
+        animationId = requestAnimationFrame(update);
     }
 
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        drawBackground();
+        
+        if (introTimer < introDuration) {
+            let bgOpacity = Math.max(0, (introTimer / introDuration - 0.5) / 0.5);
+            drawBackground(bgOpacity);
+        } else {
+            drawBackground(1.0);
+        }
 
-        // 障害物（トゲのような箱）
+        ctx.save();
+        if (introTimer < introDuration) {
+            const centerX = player.x + player.w / 2;
+            const centerY = player.y + player.h / 2;
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            ctx.scale(cameraScale, cameraScale);
+            ctx.translate(-centerX, -centerY);
+        }
+
         for (let ob of obstacles) {
             ctx.fillStyle = ob.color;
             ctx.fillRect(ob.x, ob.y, ob.w, ob.h);
-            ctx.strokeStyle = "white";
-            ctx.lineWidth = 2;
-            ctx.strokeRect(ob.x + 5, ob.y + 5, ob.w - 10, ob.h - 10);
         }
 
-        drawHuman(player.x, player.y, player.animFrame);
+        drawBike(player.x, player.y, player.w, player.h);
+        ctx.restore();
 
-        if (!gameActive) {
+        if (!gameActive && introTimer >= introDuration) {
             ctx.fillStyle = "rgba(0,0,0,0.6)";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.fillStyle = "white";
             ctx.textAlign = "center";
             ctx.font = "bold 40px sans-serif";
-            ctx.fillText("ゲームオーバー！", 400, 280);
+            ctx.fillText("ざんねん！", 400, 280);
             ctx.font = "24px sans-serif";
             ctx.fillText("ボタンをおして もういっかい！", 400, 340);
         }
     }
-
-    update();
 </script>
 </body>
 </html>
