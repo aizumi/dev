@@ -142,7 +142,7 @@
                 </div>
             </button>
             <button id="btn-oji" onclick="startGame(10)" class="hidden bg-yellow-100 border-4 border-yellow-600 p-4 rounded-2xl flex items-center shadow-lg hover:bg-yellow-200">
-                <img src="https://aizumi.github.io/dev/images/oji.jpg" class="w-16 h-16 mr-4" alt="お父さん">
+                <img src="https://aizumi.github.io/dev/images/oji.png" class="w-16 h-16 mr-4" alt="お父さん">
                 <div class="text-left">
                     <div class="font-bold text-xl text-yellow-800">お父さん</div>
                     <div class="text-red-700 text-sm font-bold">超最強 ⭐×10</div>
@@ -199,7 +199,7 @@
 
     <!-- 結果画面 -->
     <div id="screen-result" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-6">
-        <div class="bg-white rounded-3xl p-8 w-full max-w-md text-center">
+        <div class="bg-white rounded-3xl p-8 w-full max-md text-center">
             <div id="result-icon" class="text-8xl mb-4">🎊</div>
             <h2 id="result-title" class="text-4xl font-bold mb-4">1い！</h2>
             <p id="result-text" class="text-xl mb-8">おめでとう！</p>
@@ -266,6 +266,7 @@
             state.snackUsed = false;
             elements.snackBtn.classList.add('hidden');
             elements.hintBubble.classList.add('hidden');
+            elements.sleepEffect.classList.add('hidden');
 
             if (difficulty === 1) {
                 enemyData = { name: 'ドラえもん', img: 'https://aizumi.github.io/dev/images/doraemon.png', speed: 0.8 };
@@ -280,7 +281,7 @@
                 elements.snackBtn.classList.remove('opacity-30');
             } else if (difficulty === 10) {
                 // お父さん
-                enemyData = { name: 'お父さん', img: 'https://aizumi.github.io/dev/images/oji.jpg', speed: 0 };
+                enemyData = { name: 'お父さん', img: 'https://aizumi.github.io/dev/images/oji.png', speed: 0 };
                 state.isFatherMode = true;
                 elements.hintBubble.classList.remove('hidden');
             }
@@ -290,6 +291,10 @@
             elements.enemyImg.classList.remove('sleeping', 'eating');
             
             state.enemyBaseSpeed = enemyData.speed;
+            state.playerPos = 40;
+            state.enemyPos = 40;
+            state.cameraX = 0;
+            state.winner = null;
             state.lastInputTime = Date.now();
             elements.finishLine.style.left = state.courseLength + 'px';
 
@@ -338,7 +343,7 @@
             state.playerPos += moveAmt;
             state.lastInputTime = Date.now(); // 入力時間を更新
 
-            // お父さんのシンクロ機能
+            // お父さんのシンクロ機能: 起きている間だけ一緒に動く
             if (state.isFatherMode && !state.enemyStopped) {
                 state.enemyPos += moveAmt;
             }
@@ -356,21 +361,28 @@
                 const idleTime = Date.now() - state.lastInputTime;
                 
                 if (idleTime > 3000) {
-                    // 3秒以上操作なしで寝る
+                    // 3秒以上操作なしで居眠り開始
                     if (!state.enemyStopped) {
                         state.enemyStopped = true;
                         elements.sleepEffect.classList.remove('hidden');
                         elements.enemyImg.classList.add('sleeping');
+                        
+                        // 居眠り時間を長く設定 (6秒間寝る)
+                        setTimeout(() => {
+                            if (state.isFatherMode && state.isPlaying) {
+                                state.enemyStopped = false;
+                                elements.sleepEffect.classList.add('hidden');
+                                elements.enemyImg.classList.remove('sleeping');
+                                // 起きた瞬間にlastInputTimeを更新して、すぐにまた寝ないようにする
+                                state.lastInputTime = Date.now();
+                            }
+                        }, 6000);
                     }
                 } else {
-                    // 起きる
-                    if (state.enemyStopped) {
-                        state.enemyStopped = false;
-                        elements.sleepEffect.classList.add('hidden');
-                        elements.enemyImg.classList.remove('sleeping');
+                    // 起きている間はお父さんは何もしなくても少しずつ進む
+                    if (!state.enemyStopped) {
+                        state.enemyPos += 0.2;
                     }
-                    // お父さんは何もしなくても少しずつ進む（微調整）
-                    state.enemyPos += 0.1;
                 }
             } else {
                 // 通常の敵の移動
@@ -386,7 +398,9 @@
 
             render();
             checkFinish();
-            requestAnimationFrame(updateLoop);
+            if (state.isPlaying) {
+                requestAnimationFrame(updateLoop);
+            }
         }
 
         function render() {
@@ -407,10 +421,10 @@
             if (state.playerPos >= state.courseLength) {
                 state.winner = 'player';
                 // 解放ロジック
-                if (state.enemyBaseSpeed >= 2 && state.isBossMode) {
+                if (state.enemyBaseSpeed >= 2.5 && state.isBossMode) {
                     localStorage.setItem('race_unlocked_oji', 'true');
                     state.unlockedOji = true;
-                } else if (state.enemyBaseSpeed >= 1.4) {
+                } else if (state.enemyBaseSpeed >= 1.5) {
                     localStorage.setItem('race_unlocked_niinii', 'true');
                     state.unlockedNiinii = true;
                 }
