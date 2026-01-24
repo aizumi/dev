@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ドキドキ！かけっこレース</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Kosugi+Maru&display=swap');
+        
+        body {
+            font-family: 'Kosugi+Maru', sans-serif;
+            background-color: #f0fdf4;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        #race-container {
+            position: relative;
+            width: 100%;
+            overflow-x: hidden;
+            height: 100%;
+        }
+
+        .track-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 5000px;
+            background-color: #dcfce7;
+            background-image: 
+                linear-gradient(90deg, #bbf7d0 2px, transparent 2px);
+            background-size: 100px 100%;
+        }
+
+        .lane {
+            height: 100px;
+            position: relative;
+            border-bottom: 4px dashed #86efac;
+            display: flex;
+            align-items: center;
+        }
+
+        .finish-line {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 40px;
+            background: repeating-linear-gradient(
+                0deg,
+                #000 0px, #000 20px,
+                #fff 20px, #fff 40px
+            );
+            border-left: 4px solid #333;
+        }
+
+        .character {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            transition: transform 0.1s ease-out;
+        }
+
+        .character img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .flip-h {
+            transform: scaleX(-1);
+        }
+
+        .btn-tap {
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+        }
+        .running {
+            animation: bounce 0.2s infinite;
+        }
+
+        /* おやつでもぐもぐしている時のアニメーション */
+        @keyframes mogumogu {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+        .eating {
+            animation: mogumogu 0.3s infinite;
+        }
+    </style>
+</head>
+<body class="flex flex-col h-screen">
+
+    <!-- 難易度選択画面 -->
+    <div id="screen-select" class="flex-1 flex flex-col items-center justify-center p-4">
+        <h1 class="text-3xl font-bold mb-8 text-green-600">だれと かけっこ する？</h1>
+        <div class="grid grid-cols-1 gap-4 w-full max-w-sm">
+            <button onclick="startGame(1)" class="bg-white border-4 border-blue-400 p-4 rounded-2xl flex items-center shadow-lg hover:bg-blue-50">
+                <img src="https://aizumi.github.io/dev/images/doraemon.png" class="w-16 h-16 mr-4" alt="ドラえもん">
+                <div class="text-left">
+                    <div class="font-bold text-xl">ドラえもん</div>
+                    <div class="text-yellow-500 text-sm font-bold">やさしい ⭐︎</div>
+                </div>
+            </button>
+            <button onclick="startGame(2)" class="bg-white border-4 border-pink-400 p-4 rounded-2xl flex items-center shadow-lg hover:bg-pink-50">
+                <img src="https://aizumi.github.io/dev/images/rabbit.png" class="w-16 h-16 mr-4 flip-h" alt="うさぎ">
+                <div class="text-left">
+                    <div class="font-bold text-xl">うさぎ</div>
+                    <div class="text-yellow-500 text-sm font-bold">ふつう ⭐⭐︎</div>
+                </div>
+            </button>
+            <button onclick="startGame(3)" class="bg-white border-4 border-purple-400 p-4 rounded-2xl flex items-center shadow-lg hover:bg-purple-50">
+                <img src="https://aizumi.github.io/dev/images/sam.png" class="w-16 h-16 mr-4" alt="スライムサム">
+                <div class="text-left">
+                    <div class="font-bold text-xl">スライムサム</div>
+                    <div class="text-yellow-500 text-sm font-bold">ちょっと はやい ⭐⭐⭐</div>
+                </div>
+            </button>
+            <!-- 隠しキャラ：にいにい -->
+            <button id="btn-niinii" onclick="startGame(5)" class="hidden bg-slate-100 border-4 border-slate-600 p-4 rounded-2xl flex items-center shadow-lg hover:bg-slate-200">
+                <img src="https://aizumi.github.io/dev/images/bike.png" class="w-16 h-16 mr-4" alt="にいにい">
+                <div class="text-left">
+                    <div class="font-bold text-xl">にいにい</div>
+                    <div class="text-red-600 text-sm font-bold">最強 ⭐⭐⭐⭐⭐</div>
+                </div>
+            </button>
+        </div>
+    </div>
+
+    <!-- レース画面 -->
+    <div id="screen-game" class="hidden flex-1 flex flex-col overflow-hidden">
+        <div class="bg-sky-200 p-2 text-center relative z-20 flex justify-between items-center px-4">
+            <div class="w-20"></div>
+            <div id="count-down" class="text-5xl font-bold text-red-500 h-12"></div>
+            <div class="w-20">
+                <button id="snack-btn" onclick="useSnack()" class="hidden bg-yellow-400 border-2 border-yellow-600 rounded-full p-2 shadow-md active:scale-95">
+                    <span class="text-2xl">🍬</span>
+                </button>
+            </div>
+        </div>
+        
+        <div id="race-container" class="flex-1 flex flex-col justify-center bg-green-50">
+            <div class="track-background" id="scrolling-bg"></div>
+            
+            <div class="lane w-full">
+                <div id="player" class="character left-10">
+                    <img src="https://aizumi.github.io/dev/images/sana.png" id="player-img">
+                </div>
+                <div id="player-tag" class="absolute top-0 left-10 bg-blue-500 text-white text-xs px-2 rounded-full z-20">あなた</div>
+            </div>
+
+            <div class="lane w-full">
+                <div id="enemy" class="character left-10">
+                    <img src="" id="enemy-img">
+                </div>
+                <div id="enemy-tag" class="absolute top-0 left-10 bg-red-500 text-white text-xs px-2 rounded-full z-20">ライバル</div>
+                <div id="snack-effect" class="hidden absolute top-0 text-3xl z-30">🍬もぐもぐ</div>
+            </div>
+
+            <div id="finish-line-obj" class="finish-line"></div>
+        </div>
+
+        <!-- 操作ボタンエリア -->
+        <div class="h-1/3 bg-white p-4 flex gap-4 items-center justify-center border-t-8 border-green-200 z-30">
+            <button id="run-btn" class="btn-tap flex-1 h-full bg-orange-400 text-white text-5xl font-bold rounded-3xl shadow-[0_12px_0_rgb(194,120,0)] active:shadow-none active:translate-y-2 transition-all outline-none">
+                はしる！
+            </button>
+        </div>
+    </div>
+
+    <!-- 結果画面 -->
+    <div id="screen-result" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-6">
+        <div class="bg-white rounded-3xl p-8 w-full max-w-md text-center">
+            <div id="result-icon" class="text-8xl mb-4">🎊</div>
+            <h2 id="result-title" class="text-4xl font-bold mb-4">1い！</h2>
+            <p id="result-text" class="text-xl mb-8">おめでとう！</p>
+            <button onclick="location.reload()" class="bg-green-500 text-white text-2xl font-bold py-4 px-12 rounded-full shadow-lg">
+                もういっかい！
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const state = {
+            isPlaying: false,
+            playerPos: 40,
+            enemyPos: 40,
+            enemyBaseSpeed: 0,
+            courseLength: 4000, 
+            winner: null,
+            cameraX: 0,
+            enemyStopped: false,
+            snackUsed: false,
+            isBossMode: false,
+            unlockedNiinii: localStorage.getItem('race_unlocked_niinii') === 'true'
+        };
+
+        const elements = {
+            select: document.getElementById('screen-select'),
+            game: document.getElementById('screen-game'),
+            result: document.getElementById('screen-result'),
+            player: document.getElementById('player'),
+            enemy: document.getElementById('enemy'),
+            playerImg: document.getElementById('player-img'),
+            enemyImg: document.getElementById('enemy-img'),
+            playerTag: document.getElementById('player-tag'),
+            enemyTag: document.getElementById('enemy-tag'),
+            finishLine: document.getElementById('finish-line-obj'),
+            bg: document.getElementById('scrolling-bg'),
+            countDown: document.getElementById('count-down'),
+            runBtn: document.getElementById('run-btn'),
+            snackBtn: document.getElementById('snack-btn'),
+            snackEffect: document.getElementById('snack-effect'),
+            resultTitle: document.getElementById('result-title'),
+            resultText: document.getElementById('result-text'),
+            resultIcon: document.getElementById('result-icon'),
+            niiniiBtn: document.getElementById('btn-niinii')
+        };
+
+        // 初期表示で隠しキャラチェック
+        if (state.unlockedNiinii) {
+            elements.niiniiBtn.classList.remove('hidden');
+        }
+
+        function startGame(difficulty) {
+            elements.select.classList.add('hidden');
+            elements.game.classList.remove('hidden');
+
+            let enemyData = {};
+            state.isBossMode = false;
+
+            if (difficulty === 1) {
+                enemyData = { name: 'ドラえもん', img: 'https://aizumi.github.io/dev/images/doraemon.png', speed: 0.8, flip: false };
+            } else if (difficulty === 2) {
+                enemyData = { name: 'うさぎ', img: 'https://aizumi.github.io/dev/images/rabbit.png', speed: 1.3, flip: true };
+            } else if (difficulty === 3) {
+                enemyData = { name: 'スライムサム', img: 'https://aizumi.github.io/dev/images/sam.png', speed: 1.5, flip: false };
+            } else if (difficulty === 5) {
+                // にいにい：めちゃくちゃ速い
+                enemyData = { name: 'にいにい', img: 'https://aizumi.github.io/dev/images/bike.png', speed: 2.5, flip: false };
+                state.isBossMode = true;
+                elements.snackBtn.classList.remove('hidden');
+            }
+
+            elements.enemyImg.src = enemyData.img;
+            if (enemyData.flip) {
+                elements.enemyImg.classList.add('flip-h');
+            } else {
+                elements.enemyImg.classList.remove('flip-h');
+            }
+            
+            state.enemyBaseSpeed = enemyData.speed;
+            elements.finishLine.style.left = state.courseLength + 'px';
+
+            startCountdown();
+        }
+
+        function startCountdown() {
+            let count = 3;
+            elements.countDown.innerText = count;
+            const timer = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    elements.countDown.innerText = count;
+                } else if (count === 0) {
+                    elements.countDown.innerText = "スタート！";
+                    setTimeout(() => { elements.countDown.innerText = ""; }, 1000);
+                    state.isPlaying = true;
+                    clearInterval(timer);
+                    updateLoop();
+                }
+            }, 1000);
+        }
+
+        // おやつボタン
+        function useSnack() {
+            if (!state.isPlaying || state.snackUsed || !state.isBossMode) return;
+            
+            state.snackUsed = true;
+            state.enemyStopped = true;
+            elements.snackBtn.classList.add('opacity-30');
+            elements.snackEffect.classList.remove('hidden');
+            elements.enemyImg.classList.add('eating');
+
+            // 3秒間停止
+            setTimeout(() => {
+                state.enemyStopped = false;
+                elements.snackEffect.classList.add('hidden');
+                elements.enemyImg.classList.remove('eating');
+            }, 3000);
+        }
+
+        // 連打イベント
+        elements.runBtn.addEventListener('mousedown', (e) => { e.preventDefault(); playerRun(); });
+        elements.runBtn.addEventListener('touchstart', (e) => { e.preventDefault(); playerRun(); });
+
+        function playerRun() {
+            if (!state.isPlaying) return;
+            state.playerPos += 18; 
+            elements.playerImg.classList.add('running');
+            setTimeout(() => elements.playerImg.classList.remove('running'), 150);
+            checkFinish();
+        }
+
+        function updateLoop() {
+            if (!state.isPlaying) return;
+
+            // 敵の移動
+            if (!state.enemyStopped) {
+                state.enemyPos += state.enemyBaseSpeed + (Math.random() * 0.4);
+            }
+            
+            // カメラ制御
+            const screenMid = window.innerWidth / 3;
+            if (state.playerPos > screenMid) {
+                state.cameraX = state.playerPos - screenMid;
+            }
+
+            render();
+            checkFinish();
+            requestAnimationFrame(updateLoop);
+        }
+
+        function render() {
+            elements.player.style.transform = `translateX(${state.playerPos - state.cameraX}px)`;
+            elements.playerTag.style.transform = `translateX(${state.playerPos - state.cameraX}px)`;
+            
+            elements.enemy.style.transform = `translateX(${state.enemyPos - state.cameraX}px)`;
+            elements.enemyTag.style.transform = `translateX(${state.enemyPos - state.cameraX}px)`;
+            elements.snackEffect.style.transform = `translateX(${state.enemyPos - state.cameraX}px) translateY(-50px)`;
+            
+            elements.bg.style.transform = `translateX(${-state.cameraX}px)`;
+            elements.finishLine.style.transform = `translateX(${-state.cameraX}px)`;
+        }
+
+        function checkFinish() {
+            if (state.winner) return;
+            if (state.playerPos >= state.courseLength) {
+                state.winner = 'player';
+                // スライムサム(難易度3)以上に勝ったら「にいにい」解放
+                if (state.enemyBaseSpeed >= 1.8) {
+                    localStorage.setItem('race_unlocked_niinii', 'true');
+                    state.unlockedNiinii = true;
+                }
+                endGame();
+            } else if (state.enemyPos >= state.courseLength) {
+                state.winner = 'enemy';
+                endGame();
+            }
+        }
+
+        function endGame() {
+            state.isPlaying = false;
+            setTimeout(() => {
+                elements.result.classList.remove('hidden');
+                if (state.winner === 'player') {
+                    elements.resultIcon.innerText = "🏆";
+                    elements.resultTitle.innerText = "1い！おめでとう！";
+                    elements.resultText.innerText = state.isBossMode ? "にいにいに かてたね！すごすぎる！" : "きみが いちばん はやかったよ！";
+                } else {
+                    elements.resultIcon.innerText = "🥈";
+                    elements.resultTitle.innerText = "2い！おしかったね";
+                    elements.resultText.innerText = state.isBossMode ? "おやつを つかって リベンジだ！" : "つぎは もっと はやく おしてみよう！";
+                }
+            }, 500);
+        }
+    </script>
+</body>
+</html>
