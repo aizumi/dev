@@ -247,7 +247,7 @@
                 enemyData = { name: 'スライムサム', img: 'https://aizumi.github.io/dev/images/sam.png', speed: 1.5, flip: false };
             } else if (difficulty === 5) {
                 // にいにい：めちゃくちゃ速い
-                enemyData = { name: 'にいにい', img: 'https://aizumi.github.io/dev/images/bike.png', speed: 2.5, flip: false };
+                enemyData = { name: 'にいにい', img: 'https://aizumi.github.io/dev/bike.png', speed: 2.0, flip: false };
                 state.isBossMode = true;
                 elements.snackBtn.classList.remove('hidden');
             }
@@ -297,7 +297,7 @@
                 state.enemyStopped = false;
                 elements.snackEffect.classList.add('hidden');
                 elements.enemyImg.classList.remove('eating');
-            }, 3000);
+            }, 5000);
         }
 
         // 連打イベント
