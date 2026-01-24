@@ -348,7 +348,7 @@
             if (state.playerPos >= state.courseLength) {
                 state.winner = 'player';
                 // スライムサム(難易度3)以上に勝ったら「にいにい」解放
-                if (state.enemyBaseSpeed >= 1.8) {
+                if (state.enemyBaseSpeed >= 1.4) {
                     localStorage.setItem('race_unlocked_niinii', 'true');
                     state.unlockedNiinii = true;
                 }
