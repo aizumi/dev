@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>おんぷあてサバイバル・ミックス</title>
+    <title>おんぷあてサバイバル・プロ</title>
     <style>
         body { font-family: sans-serif; text-align: center; background-color: #f0f8ff; margin: 0; padding: 10px; touch-action: manipulation; }
         .container { max-width: 400px; margin: auto; background: white; padding: 15px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
@@ -11,12 +11,13 @@
         .hidden { display: none; }
         
         #timer-display { font-size: 20px; font-weight: bold; color: #ff9800; margin: 5px 0; }
+        #highscore-display { font-size: 14px; color: #555; margin-bottom: 5px; }
 
         .staff-area { position: relative; width: 100%; height: 160px; margin: 10px 0; background: white; border-left: 2px solid black; border-right: 2px solid black; }
         .line { position: absolute; width: 100%; height: 2px; background: black; left: 0; }
         .line1 { top: 40px; } .line2 { top: 60px; } .line3 { top: 80px; } .line4 { top: 100px; } .line5 { top: 120px; }
 
-        #clef-display { position: absolute; left: 5px; top: 25px; font-size: 90px; line-height: 1; pointer-events: none; transition: all 0.2s; }
+        #clef-display { position: absolute; left: 5px; top: 25px; font-size: 90px; line-height: 1; pointer-events: none; }
         #note { position: absolute; width: 26px; height: 20px; background: black; border-radius: 50%; left: 55%; transform: translateX(-50%); z-index: 10; }
         #ledger-line { position: absolute; width: 40px; height: 2px; background: black; left: 55%; transform: translateX(-50%); z-index: 5; display: none; }
 
@@ -30,6 +31,8 @@
         .mode-btn.active { outline: 3px solid #333; background-color: #e68a00; }
         .start-btn { width: 100%; padding: 20px; background: #ff6f61; font-size: 20px; margin-top: 10px; }
         
+        .quit-btn { background-color: #9e9e9e; font-size: 14px; padding: 8px; margin-top: 20px; width: 50%; }
+        
         #result { font-size: 22px; font-weight: bold; height: 30px; margin: 10px; }
         #status { font-size: 16px; color: #666; font-weight: bold; }
         .retry-msg { color: #f44336; animation: shake 0.2s ease-in-out 0s 2; }
@@ -42,16 +45,16 @@
     <h1>音当てサバイバル</h1>
 
     <div id="setup">
+        <div id="highscore-display">最高記録: --</div>
         <p>1. モードを えらんでね</p>
         <div style="display:flex; gap:5px;">
             <button id="btn-treble" class="mode-btn active" style="flex:1" onclick="setClef('treble')">🎼 ト音</button>
             <button id="btn-bass" class="mode-btn" style="flex:1" onclick="setClef('bass')">𝄢 ヘ音</button>
-            <button id="btn-mix" class="mode-btn" style="flex:1" onclick="setClef('mix')">🌀 まぜまぜ</button>
+            <button id="btn-mix" class="mode-btn" style="flex:1" onclick="setClef('mix')">🌀 まぜ</button>
         </div>
 
-        <p>2. でてくる音（ド〜ド）</p>
-        <div class="note-selector" id="note-choices">
-            </div>
+        <p>2. でてくる音を えらんでね</p>
+        <div class="note-selector" id="note-choices"></div>
 
         <p>3. 連続正解ノルマ：
             <select id="question-count" style="font-size:18px;">
@@ -68,7 +71,7 @@
         <div id="status">コンボ: 0 / 10</div>
         <div class="staff-area">
             <div class="line line1"></div><div class="line line2"></div><div class="line line3"></div><div class="line line4"></div><div class="line line5"></div>
-            <div id="clef-display">𝄞</div>
+            <div id="clef-display"></div>
             <div id="ledger-line"></div>
             <div id="note"></div>
         </div>
@@ -83,10 +86,11 @@
             <button onclick="checkAnswer('シ')">シ</button>
             <button onclick="checkAnswer('ド')">ド</button>
         </div>
+        <button class="quit-btn" onclick="quitGame()">やめる</button>
     </div>
 
     <div id="end" class="hidden">
-        <h2>完全制覇！</h2>
+        <h2 id="end-title">完全制覇！</h2>
         <p id="final-time" style="font-size:24px; color: #ff9800; font-weight: bold;"></p>
         <p id="score-text" style="font-size:18px;"></p>
         <button class="start-btn" onclick="location.reload()">タイトルに戻る</button>
@@ -94,11 +98,11 @@
 </div>
 
 <script>
-    let currentMode = 'treble'; // 'treble', 'bass', 'mix'
+    let currentMode = 'treble';
     let currentCombo = 0;
     let goalCombo = 0;
     let currentNote = null;
-    let activeIndices = [0, 1, 2, 3, 4]; // デフォルトで選択される音のインデックス
+    let activeIndices = [0, 1, 2, 3, 4];
     let isProcessing = false;
     
     let startTime;
@@ -106,31 +110,22 @@
 
     const noteData = {
         treble: [
-            { name: 'ド', top: 130, ledger: 139 },
-            { name: 'レ', top: 120, ledger: null },
-            { name: 'ミ', top: 110, ledger: null },
-            { name: 'ファ', top: 100, ledger: null },
-            { name: 'ソ', top: 90, ledger: null },
-            { name: 'ラ', top: 80, ledger: null },
-            { name: 'シ', top: 70, ledger: null },
-            { name: 'ド', top: 60, ledger: null }
+            { name: 'ド', top: 130, ledger: 139 }, { name: 'レ', top: 120, ledger: null },
+            { name: 'ミ', top: 110, ledger: null }, { name: 'ファ', top: 100, ledger: null },
+            { name: 'ソ', top: 90, ledger: null }, { name: 'ラ', top: 80, ledger: null },
+            { name: 'シ', top: 70, ledger: null }, { name: 'ド', top: 60, ledger: null }
         ],
         bass: [
-            { name: 'ド', top: 70, ledger: null },
-            { name: 'レ', top: 60, ledger: null },
-            { name: 'ミ', top: 50, ledger: null },
-            { name: 'ファ', top: 40, ledger: null },
-            { name: 'ソ', top: 30, ledger: null },
-            { name: 'ラ', top: 20, ledger: null },
-            { name: 'シ', top: 10, ledger: null },
-            { name: 'ド', top: 0, ledger: 9 }
+            { name: 'ド', top: 70, ledger: null }, { name: 'レ', top: 60, ledger: null },
+            { name: 'ミ', top: 50, ledger: null }, { name: 'ファ', top: 40, ledger: null },
+            { name: 'ソ', top: 30, ledger: null }, { name: 'ラ', top: 20, ledger: null },
+            { name: 'シ', top: 10, ledger: null }, { name: 'ド', top: 0, ledger: 9 }
         ]
     };
 
     function renderCheckboxes() {
         const container = document.getElementById('note-choices');
         container.innerHTML = '';
-        // 音の種類は共通なのでtreble基準で表示
         noteData.treble.forEach((note, index) => {
             const label = document.createElement('label');
             label.className = 'note-checkbox';
@@ -150,6 +145,18 @@
         document.getElementById('btn-treble').classList.toggle('active', type === 'treble');
         document.getElementById('btn-bass').classList.toggle('active', type === 'bass');
         document.getElementById('btn-mix').classList.toggle('active', type === 'mix');
+        updateBestScoreDisplay();
+    }
+
+    // 最高記録の表示
+    function updateBestScoreDisplay() {
+        const best = localStorage.getItem('best_time_' + currentMode);
+        const display = document.getElementById('highscore-display');
+        if (best) {
+            display.innerText = `現在のモードの最高記録: ${parseFloat(best).toFixed(1)}秒`;
+        } else {
+            display.innerText = `現在のモードの最高記録: まだ記録がありません`;
+        }
     }
 
     function startGame() {
@@ -157,15 +164,12 @@
             alert('音を ひとつ以上 えらんでね！');
             return;
         }
-
         goalCombo = parseInt(document.getElementById('question-count').value);
         currentCombo = 0;
         document.getElementById('setup').classList.add('hidden');
         document.getElementById('game').classList.remove('hidden');
-        
         startTime = Date.now();
         timerInterval = setInterval(updateTimer, 100);
-        
         nextQuestion();
     }
 
@@ -177,33 +181,24 @@
     function nextQuestion() {
         if (currentCombo >= goalCombo) {
             clearInterval(timerInterval);
-            showEndScreen();
+            finishGame();
             return;
         }
-        
         isProcessing = false;
         document.getElementById('status').innerText = `コンボ: ${currentCombo} / ${goalCombo}`;
         document.getElementById('result').innerText = "";
         document.getElementById('result').classList.remove('retry-msg');
         
-        // ミックスモードなら記号をランダムに決定
-        let displayClef = currentMode;
-        if (currentMode === 'mix') {
-            displayClef = Math.random() > 0.5 ? 'treble' : 'bass';
-        }
-
-        // 記号の表示更新
+        let displayClef = currentMode === 'mix' ? (Math.random() > 0.5 ? 'treble' : 'bass') : currentMode;
         const clefEl = document.getElementById('clef-display');
         clefEl.innerHTML = (displayClef === 'treble') ? '𝄞' : '𝄢';
-        clefEl.style.color = (displayClef === 'treble') ? 'black' : '#4a90e2'; // ヘ音記号は少し色を変えて気づきやすく
+        clefEl.style.color = (displayClef === 'treble') ? 'black' : '#4a90e2';
 
-        // 音の選択
         const randIdx = activeIndices[Math.floor(Math.random() * activeIndices.length)];
         currentNote = noteData[displayClef][randIdx];
         
         const noteEl = document.getElementById('note');
         const ledgerEl = document.getElementById('ledger-line');
-        
         noteEl.style.top = currentNote.top + 'px';
         if (currentNote.ledger !== null) {
             ledgerEl.style.display = 'block';
@@ -216,7 +211,6 @@
     function checkAnswer(answer) {
         if (isProcessing) return;
         isProcessing = true;
-
         const resEl = document.getElementById('result');
         if (answer === currentNote.name) {
             currentCombo++;
@@ -232,15 +226,34 @@
         }
     }
 
-    function showEndScreen() {
+    function finishGame() {
         document.getElementById('game').classList.add('hidden');
         document.getElementById('end').classList.remove('hidden');
         const finalTime = (Date.now() - startTime) / 1000;
-        document.getElementById('final-time').innerText = `記録: ${finalTime.toFixed(1)}秒`;
-        document.getElementById('score-text').innerText = `${goalCombo}連勝達成！すごすぎる！`;
+        
+        // 最高記録の更新チェック
+        const key = 'best_time_' + currentMode;
+        const lastBest = localStorage.getItem(key);
+        let isNewRecord = false;
+
+        if (!lastBest || finalTime < parseFloat(lastBest)) {
+            localStorage.setItem(key, finalTime);
+            isNewRecord = true;
+        }
+
+        document.getElementById('end-title').innerText = isNewRecord ? "🎉 自己ベスト更新！" : "完全制覇！";
+        document.getElementById('final-time').innerText = `今回の記録: ${finalTime.toFixed(1)}秒`;
+        document.getElementById('score-text').innerText = isNewRecord ? `これまでの記録を塗り替えました！` : `最高記録まであと少し！`;
+    }
+
+    function quitGame() {
+        if (confirm('ゲームを中断してタイトルに戻りますか？')) {
+            location.reload();
+        }
     }
 
     renderCheckboxes();
+    updateBestScoreDisplay();
 </script>
 
 </body>
