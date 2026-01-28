@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>お父さんに落とし穴！登山ゲーム</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            touch-action: manipulation;
+            font-family: 'Hiragino Kaku Gothic Pro', 'Segoe UI', sans-serif;
+            background-color: #87CEEB;
+        }
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        /* 山の描画 */
+        .mountain {
+            position: absolute;
+            bottom: 0;
+            width: 0;
+            height: 0;
+            border-left: 55vw solid transparent;
+            border-right: 55vw solid transparent;
+            border-bottom: 80vh solid #2E7D32;
+            z-index: 1;
+        }
+        .summit-area {
+            position: absolute;
+            top: 20vh;
+            width: 160px;
+            height: 40px;
+            background: #388E3C;
+            z-index: 2;
+            border-radius: 50%;
+        }
+        /* キャラクター */
+        .character {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            z-index: 10;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center bottom;
+            transition: transform 0.2s;
+        }
+        #player {
+            background-image: url('https://aizumi.github.io/dev/images/sana2.png');
+        }
+        #father {
+            background-image: url('https://aizumi.github.io/dev/images/otosan.png');
+        }
+        /* 落とし穴（最初は見えない） */
+        .trap-spot {
+            position: absolute;
+            top: 21vh;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 70px;
+            height: 25px;
+            background: #3E2723;
+            border-radius: 50%;
+            z-index: 5;
+            display: none;
+            box-shadow: inset 0 6px 10px rgba(0,0,0,0.8);
+        }
+        /* ゲージ */
+        .progress-bar-container {
+            position: absolute;
+            top: 60px;
+            width: 250px;
+            height: 30px;
+            background: rgba(255,255,255,0.7);
+            border-radius: 15px;
+            border: 4px solid #333;
+            z-index: 50;
+            display: none;
+            overflow: hidden;
+        }
+        #dig-progress {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #FFEB3B, #FF9800);
+            transition: width 0.1s;
+        }
+        /* 操作系 */
+        .controls {
+            position: absolute;
+            bottom: 30px;
+            width: 100%;
+            display: flex;
+            justify-content: space-evenly;
+            z-index: 60;
+        }
+        .btn {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: #FFFFFF;
+            border: 4px solid #444;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 35px;
+            box-shadow: 0 6px 0 #999;
+            cursor: pointer;
+            user-select: none;
+        }
+        .btn:active {
+            transform: translateY(4px);
+            box-shadow: none;
+        }
+        /* アラート */
+        #alert-badge {
+            position: absolute;
+            top: 20px;
+            background: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            border: 3px solid red;
+            color: red;
+            font-weight: bold;
+            font-size: 1.2rem;
+            display: none;
+            z-index: 100;
+        }
+        /* メッセージ */
+        #msg-box {
+            position: absolute;
+            top: 25%;
+            width: 85%;
+            max-width: 400px;
+            background: white;
+            border: 6px solid #4CAF50;
+            padding: 30px;
+            border-radius: 30px;
+            text-align: center;
+            z-index: 200;
+            display: none;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div class="mountain"></div>
+    <div class="summit-area" style="left: calc(50% - 80px);"></div>
+    <div id="trap" class="trap-spot"></div>
+
+    <div id="alert-badge">👀 おとうさんがみてる！</div>
+
+    <div class="progress-bar-container" id="progress-container">
+        <div id="dig-progress"></div>
+    </div>
+
+    <div id="player" class="character"></div>
+    <div id="father" class="character"></div>
+
+    <div class="controls">
+        <div class="btn" id="btn-left">◀️</div>
+        <div class="btn" id="btn-dig">🪏</div>
+        <div class="btn" id="btn-right">▶️</div>
+    </div>
+
+    <div id="msg-box">
+        <h2 id="msg-title" class="text-3xl font-black mb-4"></h2>
+        <p id="msg-text" class="text-xl mb-6"></p>
+        <button onclick="init()" class="bg-blue-500 text-white text-2xl px-10 py-4 rounded-full font-bold shadow-lg active:scale-95">もう一回あそぶ</button>
+    </div>
+</div>
+
+<script>
+    const player = document.getElementById('player');
+    const father = document.getElementById('father');
+    const trap = document.getElementById('trap');
+    const progressContainer = document.getElementById('progress-container');
+    const digBar = document.getElementById('dig-progress');
+    const msgBox = document.getElementById('msg-box');
+    const alertBadge = document.getElementById('alert-badge');
+
+    let gameState, playerPos, fatherPos, digProgress, isFatherLooking, isDigging, digInterval;
+    let trapReady = false;
+
+    function init() {
+        gameState = 'playing';
+        playerPos = { x: 10, y: 5 };
+        fatherPos = { x: 85, y: 5 };
+        digProgress = 0;
+        isFatherLooking = false;
+        isDigging = false;
+        trapReady = false;
+        
+        trap.style.display = 'none';
+        progressContainer.style.display = 'none';
+        msgBox.style.display = 'none';
+        alertBadge.style.display = 'none';
+        
+        father.style.transition = 'none';
+        father.style.bottom = '5vh';
+        father.style.left = '85vw';
+        father.style.opacity = '1';
+        
+        updatePositions();
+        requestAnimationFrame(gameLoop);
+        triggerFatherLogic();
+    }
+
+    function updatePositions() {
+        player.style.left = playerPos.x + 'vw';
+        player.style.bottom = playerPos.y + 'vh';
+        father.style.left = fatherPos.x + 'vw';
+        father.style.bottom = fatherPos.y + 'vh';
+        
+        player.style.transform = playerPos.x > 50 ? 'scaleX(-1)' : 'scaleX(1)';
+        father.style.transform = fatherPos.x < 50 ? 'scaleX(-1)' : 'scaleX(1)';
+    }
+
+    function gameLoop() {
+        if (gameState !== 'playing' && gameState !== 'trap_waiting') return;
+
+        // お父さんの自動移動 (速度を少しゆっくりに調整)
+        if (Math.abs(fatherPos.x - 50) > 1) {
+            const dir = fatherPos.x > 50 ? -1 : 1;
+            fatherPos.x += dir * 0.035; // ゆっくり
+            // 山の斜面に合わせる
+            const dist = Math.abs(50 - fatherPos.x);
+            fatherPos.y = 80 - (dist * 1.35);
+        } else {
+            // 頂上に到着
+            if (trapReady) {
+                fallIntoTrap();
+            } else if (gameState === 'playing') {
+                endGame('lose', 'ざんねん！', 'おとうさんが頂上（ちょうじょう）についちゃった');
+            }
+        }
+
+        // 見つかったかチェック
+        if (isDigging && isFatherLooking) {
+            endGame('lose', 'あっ！', 'おとうさんにみつかっちゃった！');
+        }
+
+        updatePositions();
+        requestAnimationFrame(gameLoop);
+    }
+
+    function triggerFatherLogic() {
+        if (gameState !== 'playing') return;
+
+        const delay = isFatherLooking ? 1200 : (Math.random() * 3000 + 2500);
+        
+        setTimeout(() => {
+            if (gameState !== 'playing') return;
+            isFatherLooking = !isFatherLooking;
+            
+            if (isFatherLooking) {
+                alertBadge.style.display = 'block';
+                father.style.filter = 'drop-shadow(0 0 10px red)';
+            } else {
+                alertBadge.style.display = 'none';
+                father.style.filter = 'none';
+            }
+            triggerFatherLogic();
+        }, delay);
+    }
+
+    function move(dir) {
+        if (gameState !== 'playing') return;
+        const speed = 1.5; // 移動速度を少し落とす
+        if (dir === 'left') playerPos.x = Math.max(2, playerPos.x - speed);
+        else playerPos.x = Math.min(92, playerPos.x + speed);
+
+        const dist = Math.abs(50 - playerPos.x);
+        playerPos.y = 80 - (dist * 1.35);
+        updatePositions();
+    }
+
+    function startDig() {
+        if (gameState !== 'playing') return;
+        // 頂上付近判定
+        if (Math.abs(playerPos.x - 50) < 10 && playerPos.y > 65) {
+            isDigging = true;
+            progressContainer.style.display = 'block';
+            if (digInterval) clearInterval(digInterval);
+            digInterval = setInterval(() => {
+                digProgress += 2.5; // 掘るスピードは快適に
+                digBar.style.width = Math.min(100, digProgress) + '%';
+                if (digProgress >= 100) {
+                    clearInterval(digInterval);
+                    finishDigging();
+                }
+            }, 50);
+        }
+    }
+
+    function stopDig() {
+        isDigging = false;
+        clearInterval(digInterval);
+        if (digProgress < 100) progressContainer.style.display = 'none';
+    }
+
+    function finishDigging() {
+        trapReady = true;
+        trap.style.display = 'block';
+        isDigging = false;
+        progressContainer.style.display = 'none';
+        gameState = 'trap_waiting'; // お父さんが来るのを待つモード
+        
+        // プレイヤーを少し横に避ける
+        playerPos.x = 35; 
+        const dist = Math.abs(50 - playerPos.x);
+        playerPos.y = 80 - (dist * 1.35);
+        updatePositions();
+    }
+
+    function fallIntoTrap() {
+        gameState = 'winning_anim';
+        // お父さんが落ちる演出
+        father.style.transition = 'bottom 0.5s ease-in, transform 0.5s, opacity 0.5s';
+        father.style.bottom = '-100px';
+        father.style.transform = 'rotate(180deg)';
+        father.style.opacity = '0';
+        
+        setTimeout(() => {
+            endGame('win', 'だいせいこう！', 'おとうさんが落とし穴（おとしあな）におちたぞ！');
+        }, 600);
+    }
+
+    function endGame(status, title, text) {
+        gameState = status;
+        clearInterval(digInterval);
+        document.getElementById('msg-title').innerText = title;
+        document.getElementById('msg-text').innerText = text;
+        msgBox.style.display = 'block';
+    }
+
+    // 操作イベント
+    document.getElementById('btn-left').addEventListener('pointerdown', () => move('left'));
+    document.getElementById('btn-right').addEventListener('pointerdown', () => move('right'));
+    document.getElementById('btn-dig').addEventListener('pointerdown', startDig);
+    window.addEventListener('pointerup', stopDig);
+
+    // キーボード
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft') move('left');
+        if (e.key === 'ArrowRight') move('right');
+        if (e.code === 'Space') startDig();
+    });
+    window.addEventListener('keyup', (e) => {
+        if (e.code === 'Space') stopDig();
+    });
+
+    window.onload = init;
+</script>
+
+</body>
+</html>
