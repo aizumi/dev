@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>わくわくすごろくアドベンチャー</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Kiwi+Maru:wght@500&display=swap');
+        
+        body {
+            font-family: 'Kiwi Maru', serif;
+            background: #f0fdf4;
+            overflow-x: hidden;
+            touch-action: manipulation;
+        }
+
+        .board-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 10px;
+            padding: 20px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .tile {
+            aspect-ratio: 1;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            text-align: center;
+            position: relative;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            transition: transform 0.2s;
+            border: 3px solid transparent;
+        }
+
+        .tile-normal { background: white; border-color: #e5e7eb; }
+        .tile-start { background: #60a5fa; color: white; font-weight: bold; }
+        .tile-goal { background: #f87171; color: white; font-weight: bold; }
+        .tile-forward { background: #fde047; }
+        .tile-backward { background: #fb923c; color: white; }
+        .tile-swap { background: #c084fc; color: white; }
+        .tile-reset { background: #475569; color: white; }
+
+        .player-token {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            position: absolute;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 10;
+        }
+
+        /* Roulette Styles */
+        .roulette-container {
+            width: 160px;
+            height: 160px;
+            position: relative;
+            margin: 20px auto;
+        }
+        .roulette-wheel {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 8px solid #333;
+            position: relative;
+            overflow: hidden;
+            transition: transform 3s cubic-bezier(0.15, 0, 0.15, 1);
+        }
+        .roulette-arrow {
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-top: 30px solid #ef4444;
+            z-index: 20;
+        }
+    </style>
+</head>
+<body class="p-4">
+
+    <!-- Setup Screen -->
+    <div id="setup-screen" class="max-w-md mx-auto bg-white p-8 rounded-3xl shadow-xl mt-10">
+        <h1 class="text-3xl font-bold text-center text-green-600 mb-8">すごろくであそぼう！</h1>
+        
+        <div class="mb-6">
+            <label class="block text-gray-700 mb-2">なんにんで あそぶ？</label>
+            <div class="flex gap-4">
+                <button onclick="setPlayers(2)" id="p2" class="player-btn flex-1 py-3 rounded-xl border-2 border-green-500 bg-green-50 text-green-700 font-bold">2にん</button>
+                <button onclick="setPlayers(3)" id="p3" class="player-btn flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-600">3にん</button>
+                <button onclick="setPlayers(4)" id="p4" class="player-btn flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-600">4にん</button>
+            </div>
+        </div>
+
+        <div class="mb-8">
+            <label class="block text-gray-700 mb-2">どのくらい あそぶ？</label>
+            <div class="flex flex-col gap-2">
+                <button onclick="setTime('short')" id="t-short" class="time-btn py-3 rounded-xl border-2 border-gray-200 text-gray-600">みじかい (15マス)</button>
+                <button onclick="setTime('medium')" id="t-medium" class="time-btn py-3 rounded-xl border-2 border-green-500 bg-green-50 text-green-700 font-bold">ふつう (30マス)</button>
+                <button onclick="setTime('long')" id="t-long" class="time-btn py-3 rounded-xl border-2 border-gray-200 text-gray-600">ながい (50マス)</button>
+            </div>
+        </div>
+
+        <button onclick="startGame()" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 rounded-2xl text-xl shadow-lg transform transition active:scale-95">
+            ゲームスタート！
+        </button>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="game-screen" class="hidden">
+        <div class="max-w-5xl mx-auto">
+            <div class="flex justify-between items-center mb-4 bg-white p-4 rounded-2xl shadow-sm">
+                <div id="turn-display" class="text-xl font-bold text-gray-800">
+                    <span id="current-player-name" class="px-3 py-1 rounded-full mr-2"></span>
+                    の ばん です
+                </div>
+                <button onclick="location.reload()" class="text-sm text-gray-500 underline">さいしょから</button>
+            </div>
+
+            <div id="game-board" class="board-container mb-24">
+                <!-- Tiles generated by JS -->
+            </div>
+
+            <!-- Controls (Fixed Bottom) -->
+            <div class="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-gray-200 p-4 flex items-center justify-around z-50">
+                <div class="text-center">
+                    <div id="roulette-msg" class="text-sm font-bold text-gray-600 mb-1 h-5">ルーレットを おしてね！</div>
+                    <div class="roulette-container" onclick="spinRoulette()">
+                        <div class="roulette-arrow"></div>
+                        <div id="wheel" class="roulette-wheel">
+                            <!-- Canvas for wheel drawing -->
+                        </div>
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <div class="w-10 h-10 bg-white rounded-full shadow-md flex items-center justify-center font-bold text-gray-800 pointer-events-none">
+                                GO!
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Events -->
+    <div id="event-modal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[100] p-6">
+        <div class="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl">
+            <div id="modal-emoji" class="text-6xl mb-4">✨</div>
+            <h2 id="modal-title" class="text-2xl font-bold mb-4">イベント発生！</h2>
+            <p id="modal-text" class="text-gray-600 mb-6 text-lg"></p>
+            <button onclick="closeModal()" class="w-full bg-blue-500 text-white font-bold py-3 rounded-xl text-lg">わかった！</button>
+        </div>
+    </div>
+
+    <script>
+        let playerCount = 2;
+        let boardSize = 30;
+        let currentPlayer = 0;
+        let players = [];
+        let tiles = [];
+        let isSpinning = false;
+        
+        const playerColors = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b'];
+        const playerNames = ['あか', 'あお', 'みどり', 'きいろ'];
+
+        function setPlayers(count) {
+            playerCount = count;
+            document.querySelectorAll('.player-btn').forEach(btn => {
+                btn.classList.replace('bg-green-50', 'bg-white');
+                btn.classList.replace('border-green-500', 'border-gray-200');
+                btn.classList.replace('text-green-700', 'text-gray-600');
+            });
+            const selected = document.getElementById('p' + count);
+            selected.classList.replace('bg-white', 'bg-green-50');
+            selected.classList.replace('border-gray-200', 'border-green-500');
+            selected.classList.replace('text-gray-600', 'text-green-700');
+        }
+
+        function setTime(type) {
+            const sizes = { short: 15, medium: 30, long: 50 };
+            boardSize = sizes[type];
+            document.querySelectorAll('.time-btn').forEach(btn => {
+                btn.classList.replace('bg-green-50', 'bg-white');
+                btn.classList.replace('border-green-500', 'border-gray-200');
+                btn.classList.replace('text-green-700', 'text-gray-600');
+            });
+            const selected = document.getElementById('t-' + type);
+            selected.classList.replace('bg-white', 'bg-green-50');
+            selected.classList.replace('border-gray-200', 'border-green-500');
+            selected.classList.replace('text-gray-600', 'text-green-700');
+        }
+
+        function startGame() {
+            document.getElementById('setup-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+            
+            initGame();
+        }
+
+        function initGame() {
+            // Initialize players
+            players = [];
+            for (let i = 0; i < playerCount; i++) {
+                players.push({
+                    id: i,
+                    pos: 0,
+                    color: playerColors[i],
+                    name: playerNames[i]
+                });
+            }
+
+            // Create board tiles
+            const boardEl = document.getElementById('game-board');
+            boardEl.innerHTML = '';
+            tiles = [];
+
+            for (let i = 0; i < boardSize; i++) {
+                let type = 'normal';
+                let text = i + 1;
+                let emoji = '';
+
+                if (i === 0) {
+                    type = 'start';
+                    text = 'スタート';
+                    emoji = '🚩';
+                } else if (i === boardSize - 1) {
+                    type = 'goal';
+                    text = 'ゴール';
+                    emoji = '🏆';
+                } else {
+                    const rand = Math.random();
+                    // Custom rules
+                    if (i < 10 && rand < 0.15) {
+                        type = 'reset';
+                        text = 'スタートにもどる';
+                        emoji = '😱';
+                    } else if (rand < 0.1) {
+                        type = 'swap';
+                        text = 'まえのひとといれかえ';
+                        emoji = '🔄';
+                    } else if (rand < 0.25) {
+                        type = 'forward';
+                        const steps = Math.floor(Math.random() * 3) + 1;
+                        text = steps + 'マス すすむ';
+                        emoji = '🚀';
+                        type += '-' + steps;
+                    } else if (rand < 0.4) {
+                        type = 'backward';
+                        const steps = Math.floor(Math.random() * 3) + 1;
+                        text = steps + 'マス もどる';
+                        emoji = '↩️';
+                        type += '-' + steps;
+                    }
+                }
+
+                const tileEl = document.createElement('div');
+                tileEl.className = `tile tile-${type.split('-')[0]}`;
+                tileEl.id = `tile-${i}`;
+                tileEl.innerHTML = `
+                    <span class="text-xs opacity-50 absolute top-1 left-1">${i}</span>
+                    <span class="text-xl">${emoji}</span>
+                    <span>${text}</span>
+                    <div class="player-container flex flex-wrap gap-1 justify-center mt-1 w-full h-6"></div>
+                `;
+                boardEl.appendChild(tileEl);
+                tiles.push({ type, text, emoji });
+            }
+
+            drawWheel();
+            updateDisplay();
+            renderPlayers();
+        }
+
+        function drawWheel() {
+            const wheel = document.getElementById('wheel');
+            wheel.innerHTML = '';
+            const canvas = document.createElement('canvas');
+            canvas.width = 160;
+            canvas.height = 160;
+            const ctx = canvas.getContext('2d');
+            const sections = 6;
+            const colors = ['#f87171', '#fb923c', '#fde047', '#4ade80', '#60a5fa', '#a78bfa'];
+
+            for (let i = 0; i < sections; i++) {
+                ctx.beginPath();
+                ctx.moveTo(80, 80);
+                ctx.arc(80, 80, 80, (i * 2 * Math.PI) / sections, ((i + 1) * 2 * Math.PI) / sections);
+                ctx.fillStyle = colors[i];
+                ctx.fill();
+                
+                // Numbers
+                ctx.save();
+                ctx.translate(80, 80);
+                ctx.rotate(((i + 0.5) * 2 * Math.PI) / sections);
+                ctx.textAlign = "center";
+                ctx.fillStyle = "white";
+                ctx.font = "bold 20px Arial";
+                ctx.fillText(i + 1, 50, 10);
+                ctx.restore();
+            }
+            wheel.appendChild(canvas);
+        }
+
+        function updateDisplay() {
+            const current = players[currentPlayer];
+            const nameEl = document.getElementById('current-player-name');
+            nameEl.innerText = current.name + 'ちゃん';
+            nameEl.style.backgroundColor = current.color;
+            nameEl.style.color = 'white';
+        }
+
+        function renderPlayers() {
+            // Clear all containers
+            document.querySelectorAll('.player-container').forEach(c => c.innerHTML = '');
+            
+            players.forEach(p => {
+                const container = document.querySelector(`#tile-${p.pos} .player-container`);
+                if (container) {
+                    const token = document.createElement('div');
+                    token.className = 'w-4 h-4 rounded-full border border-white shadow-sm';
+                    token.style.backgroundColor = p.color;
+                    container.appendChild(token);
+                }
+            });
+        }
+
+        async function spinRoulette() {
+            if (isSpinning) return;
+            isSpinning = true;
+
+            const wheel = document.getElementById('wheel');
+            const randDeg = 1800 + Math.floor(Math.random() * 360);
+            wheel.style.transform = `rotate(${randDeg}deg)`;
+
+            const result = (Math.floor((360 - (randDeg % 360)) / 60) % 6) + 1;
+
+            setTimeout(() => {
+                movePlayer(result);
+                isSpinning = false;
+            }, 3000);
+        }
+
+        async function movePlayer(steps) {
+            let p = players[currentPlayer];
+            let newPos = Math.min(p.pos + steps, boardSize - 1);
+            
+            // Animation of moving one by one
+            for (let i = p.pos + 1; i <= newPos; i++) {
+                p.pos = i;
+                renderPlayers();
+                await new Promise(r => setTimeout(r, 200));
+            }
+
+            handleTileEvent(p);
+        }
+
+        function handleTileEvent(p) {
+            const tile = tiles[p.pos];
+            let title = "マスにとまったよ！";
+            let text = "";
+            let emoji = "😊";
+
+            if (tile.type.startsWith('forward')) {
+                const s = parseInt(tile.type.split('-')[1]);
+                p.pos = Math.min(p.pos + s, boardSize - 1);
+                title = "ラッキー！";
+                text = `${s}マス すすむよ！`;
+                emoji = "🚀";
+            } else if (tile.type.startsWith('backward')) {
+                const s = parseInt(tile.type.split('-')[1]);
+                p.pos = Math.max(p.pos - s, 0);
+                title = "あらら...";
+                text = `${s}マス もどっちゃう。`;
+                emoji = "↩️";
+            } else if (tile.type === 'swap') {
+                // Find someone else to swap with
+                let targetIdx = (currentPlayer - 1 + playerCount) % playerCount;
+                let target = players[targetIdx];
+                
+                let tempPos = p.pos;
+                p.pos = target.pos;
+                target.pos = tempPos;
+                
+                title = "いれかわり！";
+                text = `${target.name}ちゃんと 場所をいれかえたよ！`;
+                emoji = "🔄";
+            } else if (tile.type === 'reset') {
+                p.pos = 0;
+                title = "ぎゃーー！";
+                text = "スタートにもどっちゃった！";
+                emoji = "😱";
+            } else if (tile.type === 'goal') {
+                showModal("おめでとう！", `${p.name}ちゃんが ゴールしたよ！`, "🎊");
+                return;
+            }
+
+            if (text !== "") {
+                setTimeout(() => {
+                    showModal(title, text, emoji);
+                    renderPlayers();
+                }, 500);
+            } else {
+                nextTurn();
+            }
+        }
+
+        function showModal(title, text, emoji) {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-text').innerText = text;
+            document.getElementById('modal-emoji').innerText = emoji;
+            document.getElementById('event-modal').classList.remove('hidden');
+            document.getElementById('event-modal').classList.add('flex');
+        }
+
+        function closeModal() {
+            document.getElementById('event-modal').classList.add('hidden');
+            document.getElementById('event-modal').classList.remove('flex');
+            
+            const p = players[currentPlayer];
+            if (p.pos === boardSize - 1) {
+                location.reload(); // Reset on goal
+            } else {
+                nextTurn();
+            }
+        }
+
+        function nextTurn() {
+            currentPlayer = (currentPlayer + 1) % playerCount;
+            document.getElementById('wheel').style.transition = 'none';
+            document.getElementById('wheel').style.transform = 'rotate(0deg)';
+            setTimeout(() => {
+                document.getElementById('wheel').style.transition = 'transform 3s cubic-bezier(0.15, 0, 0.15, 1)';
+            }, 50);
+            updateDisplay();
+        }
+    </script>
+</body>
+</html>
+
