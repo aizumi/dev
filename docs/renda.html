@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>超連打チャンピオン！</title>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #FF6B6B;
+            --secondary: #4ECDC4;
+            --accent: #FFE66D;
+            --bg: #F7FFF7;
+        }
+
+        body {
+            font-family: 'M PLUS Rounded 1c', sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        #game-container {
+            text-align: center;
+            width: 90%;
+            max-width: 500px;
+            background: white;
+            padding: 20px;
+            border-radius: 30px;
+            box-shadow: 0 10px 0 #ddd;
+        }
+
+        .screen { display: none; }
+        .active { display: block; }
+
+        h1 { color: var(--primary); font-size: 2rem; margin-bottom: 20px; }
+
+        /* ボタンデザイン */
+        .btn {
+            background: var(--secondary);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 5px 0 #369b94;
+            margin: 10px;
+            transition: transform 0.1s;
+        }
+
+        .btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #369b94; }
+
+        .time-btn { background: var(--primary); box-shadow: 0 5px 0 #c44d4d; width: 80%; }
+
+        /* カウントダウン */
+        #count-number { font-size: 8rem; color: var(--primary); }
+
+        /* 連打エリア */
+        #tap-button {
+            width: 200px;
+            height: 200px;
+            background: var(--accent);
+            border-radius: 50%;
+            border: 10px solid var(--primary);
+            font-size: 2rem;
+            color: var(--primary);
+            margin: 20px auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            user-select: none;
+            cursor: pointer;
+            box-shadow: 0 10px 0 #f0d14b;
+        }
+
+        #tap-button:active { transform: scale(0.95); }
+
+        .stats { font-size: 1.5rem; display: flex; justify-content: space-around; }
+
+        /* ランキング */
+        .ranking-list { text-align: left; background: #f9f9f9; padding: 15px; border-radius: 15px; margin-top: 10px; }
+        .ranking-item { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dashed #ccc; }
+
+        .firework { position: absolute; pointer-events: none; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="start-screen" class="screen active">
+        <h1>なんかい おせるかな？</h1>
+        <p>じかんを えらんでね！</p>
+        <button class="btn time-btn" onclick="prepareGame(10)">10びょう</button><br>
+        <button class="btn time-btn" onclick="prepareGame(20)">20びょう</button><br>
+        <button class="btn time-btn" onclick="prepareGame(30)">30びょう</button><br>
+        <button class="btn time-btn" onclick="prepareGame(60)">60びょう</button>
+    </div>
+
+    <div id="countdown-screen" class="screen">
+        <h1 id="count-number">3</h1>
+        <p>じゅんびは いい？</p>
+    </div>
+
+    <div id="game-screen" class="screen">
+        <div class="stats">
+            <div>⏱ <span id="timer">10</span></div>
+            <div>🔥 <span id="score">0</span></div>
+        </div>
+        <div id="tap-button">ここを連打！</div>
+        <p>がんばれ！がんばれ！</p>
+    </div>
+
+    <div id="result-screen" class="screen">
+        <h1>けっか発表！</h1>
+        <p style="font-size: 2.5rem; color: var(--primary);"><span id="final-score">0</span> かい！</p>
+        <div class="ranking-list" id="ranking-list">
+            </div>
+        <button class="btn" onclick="showScreen('start-screen')">もういっかい！</button>
+    </div>
+</div>
+
+<script>
+    let score = 0;
+    let timeLeft = 0;
+    let gameInterval;
+    let selectedMode = 10;
+
+    function showScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+    }
+
+    function prepareGame(seconds) {
+        selectedMode = seconds;
+        showScreen('countdown-screen');
+        let count = 3;
+        const countEl = document.getElementById('count-number');
+        countEl.innerText = count;
+
+        const timer = setInterval(() => {
+            count--;
+            countEl.innerText = count;
+            if (count === 0) {
+                clearInterval(timer);
+                startGame(seconds);
+            }
+        }, 1000);
+    }
+
+    function startGame(seconds) {
+        score = 0;
+        timeLeft = seconds;
+        document.getElementById('score').innerText = score;
+        document.getElementById('timer').innerText = timeLeft;
+        showScreen('game-screen');
+
+        gameInterval = setInterval(() => {
+            timeLeft--;
+            document.getElementById('timer').innerText = timeLeft;
+            if (timeLeft <= 0) endGame();
+        }, 1000);
+    }
+
+    // タップイベント
+    const tapBtn = document.getElementById('tap-button');
+    const handleTap = (e) => {
+        e.preventDefault(); // ズーム防止
+        score++;
+        document.getElementById('score').innerText = score;
+        // 小さな演出
+        tapBtn.style.backgroundColor = `hsl(${Math.random() * 360}, 70%, 80%)`;
+    };
+
+    tapBtn.addEventListener('touchstart', handleTap);
+    tapBtn.addEventListener('mousedown', handleTap);
+
+    function endGame() {
+        clearInterval(gameInterval);
+        document.getElementById('final-score').innerText = score;
+        saveScore(selectedMode, score);
+        displayRanking(selectedMode);
+        showScreen('result-screen');
+    }
+
+    function saveScore(mode, score) {
+        const key = `ranking_${mode}`;
+        let scores = JSON.parse(localStorage.getItem(key) || '[]');
+        scores.push({ score: score, date: new Date().toLocaleDateString() });
+        scores.sort((a, b) => b.score - a.score);
+        scores = scores.slice(0, 5); // TOP 5
+        localStorage.setItem(key, JSON.stringify(scores));
+    }
+
+    function displayRanking(mode) {
+        const key = `ranking_${mode}`;
+        const scores = JSON.parse(localStorage.getItem(key) || '[]');
+        const list = document.getElementById('ranking-list');
+        list.innerHTML = `<h3>${mode}びょうのランキング</h3>`;
+        scores.forEach((s, i) => {
+            list.innerHTML += `<div class="ranking-item"><span>${i+1}い: ${s.score}かい</span><small>${s.date}</small></div>`;
+        });
+    }
+</script>
+</body>
+</html>
