@@ -3,46 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ジャスト・タイマー</title>
+    <title>リズム・マスター</title>
     <style>
-        body { font-family: sans-serif; text-align: center; background: #f0f2f5; padding-top: 50px; }
-        .container { background: white; width: 300px; margin: auto; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        h1 { font-size: 1.5rem; color: #333; }
-        #display { font-size: 3rem; margin: 20px 0; font-weight: bold; color: #007bff; height: 1.2em; }
-        button { padding: 10px 20px; font-size: 1rem; cursor: pointer; border: none; border-radius: 5px; background: #28a745; color: white; margin: 5px; }
-        button:hover { opacity: 0.9; }
-        #stopBtn { background: #dc3545; display: none; }
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; text-align: center; background: #eef2f7; padding: 20px; color: #333; }
+        .container { background: white; max-width: 400px; margin: auto; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        h1 { margin-bottom: 20px; color: #2c3e50; }
+        #display { font-size: 3.5rem; margin: 20px 0; font-weight: bold; color: #3498db; height: 1.5em; transition: color 0.3s; }
         .hidden { color: transparent !important; }
-        select { padding: 5px; font-size: 1rem; margin-bottom: 10px; }
+        button { padding: 15px 30px; font-size: 1.1rem; cursor: pointer; border: none; border-radius: 50px; background: #2ecc71; color: white; margin: 10px; transition: transform 0.1s, background 0.2s; width: 80%; }
+        button:active { transform: scale(0.95); }
+        #lapBtn { background: #f39c12; }
+        #stopBtn { background: #e74c3c; }
+        .log-container { text-align: left; margin-top: 20px; font-size: 0.9rem; max-height: 150px; overflow-y: auto; background: #f9f9f9; padding: 10px; border-radius: 10px; }
+        .log-item { border-bottom: 1px solid #ddd; padding: 5px 0; display: flex; justify-content: space-between; }
+        .perfect { color: #d35400; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>ジャスト・タイマー</h1>
+    <h1>リズム・マスター</h1>
     
     <div id="setup">
-        <p>目標時間を選んでください</p>
-        <select id="targetSelect">
-            <option value="5">5秒</option>
-            <option value="10">10秒</option>
-            <option value="15">15秒</option>
-            <option value="30">30秒</option>
-        </select><br>
-        <button onclick="startGame()">スタート！</button>
+        <p>目標時間（秒）</p>
+        <select id="targetSelect" style="padding: 10px; width: 100px; font-size: 1rem;">
+            <option value="5">5</option>
+            <option value="10">10</option>
+            <option value="20">20</option>
+        </select>
+        <p style="font-size: 0.8rem; color: #666;">1秒ごとにラップボタンを押せ！</p>
+        <button onclick="startGame()">ゲーム開始</button>
     </div>
 
     <div id="game" style="display:none;">
         <p>目標: <span id="goalLabel"></span>秒</p>
         <div id="display">0.00</div>
+        <button id="lapBtn" onclick="recordLap()">LAP! (1秒刻み)</button>
         <button id="stopBtn" onclick="stopGame()">STOP!</button>
+        <div class="log-container" id="lapLog"></div>
     </div>
 
     <div id="result" style="display:none;">
         <h2 id="resultMsg"></h2>
-        <p>あなたの記録: <span id="finalTime"></span>秒</p>
-        <p>誤差: <span id="diff"></span>秒</p>
-        <button onclick="resetGame()">もう一度</button>
+        <p>最終タイム: <span id="finalTime"></span>秒</p>
+        <p>ラップの平均誤差: <span id="avgDiff"></span>秒</p>
+        <button onclick="resetGame()">タイトルへ戻る</button>
     </div>
 </div>
 
@@ -50,13 +55,17 @@
     let startTime;
     let timerInterval;
     let targetTime;
-    const hideThreshold = 3; // 3秒後に隠す
+    let lapCount = 0;
+    let lapDiffs = [];
+    const hideThreshold = 3;
 
     function startGame() {
         targetTime = parseInt(document.getElementById('targetSelect').value);
+        lapCount = 0;
+        lapDiffs = [];
+        document.getElementById('lapLog').innerHTML = '';
         document.getElementById('setup').style.display = 'none';
         document.getElementById('game').style.display = 'block';
-        document.getElementById('stopBtn').style.display = 'inline-block';
         document.getElementById('goalLabel').innerText = targetTime;
         
         startTime = Date.now();
@@ -67,7 +76,6 @@
         let currentTime = (Date.now() - startTime) / 1000;
         let display = document.getElementById('display');
         
-        // 指定した秒数を超えたら数字を隠す
         if (currentTime >= hideThreshold) {
             display.classList.add('hidden');
             display.innerText = "??"; 
@@ -76,22 +84,35 @@
         }
     }
 
+    function recordLap() {
+        lapCount++;
+        let actualTime = (Date.now() - startTime) / 1000;
+        let diff = Math.abs(lapCount - actualTime).toFixed(3);
+        lapDiffs.push(parseFloat(diff));
+
+        const logItem = document.createElement('div');
+        logItem.className = 'log-item';
+        logItem.innerHTML = `<span>${lapCount}秒地点:</span> <span>ズレ ${diff}秒</span>`;
+        const logContainer = document.getElementById('lapLog');
+        logContainer.prepend(logItem); // 新しい記録を上に
+    }
+
     function stopGame() {
         clearInterval(timerInterval);
         let endTime = (Date.now() - startTime) / 1000;
-        let diff = Math.abs(targetTime - endTime).toFixed(3);
+        let finalDiff = Math.abs(targetTime - endTime);
+        lapDiffs.push(finalDiff);
+
+        // 平均誤差の計算
+        let sum = lapDiffs.reduce((a, b) => a + b, 0);
+        let avg = (sum / lapDiffs.length).toFixed(3);
 
         document.getElementById('game').style.display = 'none';
         document.getElementById('result').style.display = 'block';
         document.getElementById('finalTime').innerText = endTime.toFixed(3);
-        document.getElementById('diff').innerText = diff;
+        document.getElementById('avgDiff').innerText = avg;
 
-        let msg = "";
-        if (diff == 0) msg = "神業！ピッタリ！🎯";
-        else if (diff < 0.1) msg = "天才！ほぼ完璧！✨";
-        else if (diff < 0.5) msg = "すごい！惜しい！👏";
-        else msg = "もっと頑張りましょう！😅";
-        
+        let msg = avg < 0.1 ? "リズムの達人！" : avg < 0.3 ? "なかなかの精度です" : "リズムがバラバラかも？";
         document.getElementById('resultMsg').innerText = msg;
     }
 
