@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>連打バトル・チャンピオン！</title>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --p1-color: #FF6B6B; /* 赤チーム */
+            --p2-color: #4ECDC4; /* 青チーム */
+            --bg: #F7FFF7;
+        }
+
+        body {
+            font-family: 'M PLUS Rounded 1c', sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            overflow: hidden;
+            touch-action: none; /* ズームやスクロールを完全に禁止 */
+        }
+
+        /* 共通ボタン */
+        .btn {
+            background: #FFE66D;
+            color: #555;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 5px 0 #d4bf5a;
+            margin: 10px;
+        }
+
+        /* 選択画面 */
+        #setup-screen {
+            position: absolute;
+            z-index: 100;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        /* 対戦エリアの分割 */
+        #game-screen {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        .battle-zone {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            transition: background 0.1s;
+        }
+
+        /* 上のプレイヤー（180度回転させる） */
+        #p2-zone {
+            background-color: var(--p2-color);
+            transform: rotate(180deg);
+            border-bottom: 4px solid white;
+        }
+
+        /* 下のプレイヤー */
+        #p1-zone {
+            background-color: var(--p1-color);
+        }
+
+        .score-display {
+            font-size: 5rem;
+            color: white;
+            text-shadow: 4px 4px 0px rgba(0,0,0,0.1);
+            user-select: none;
+        }
+
+        /* タイマー（画面中央に浮かせる） */
+        #center-ui {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+        }
+
+        #timer-circle {
+            width: 80px;
+            height: 80px;
+            background: white;
+            border-radius: 50%;
+            border: 5px solid #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            font-weight: bold;
+        }
+
+        /* 結果発表ポップアップ */
+        #result-popup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px;
+            border-radius: 30px;
+            box-shadow: 0 0 50px rgba(0,0,0,0.3);
+            z-index: 200;
+            text-align: center;
+            width: 80%;
+        }
+
+        .winner-text { font-size: 2rem; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+
+<div id="setup-screen">
+    <h1 style="color:var(--p1-color)">どっちがはやいか<br>しょうぶだ！</h1>
+    <p>じかんを えらんでね</p>
+    <button class="btn" onclick="startBattle(10)">10びょう</button>
+    <button class="btn" onclick="startBattle(20)">20びょう</button>
+    <button class="btn" onclick="startBattle(30)">30びょう</button>
+</div>
+
+<div id="game-screen">
+    <div id="p2-zone" class="battle-zone" onmousedown="tap(2)" ontouchstart="tap(2)">
+        <div class="score-display" id="p2-score">0</div>
+        <div style="position:absolute; bottom:20px; color:white;">あお プレーヤー</div>
+    </div>
+    
+    <div id="center-ui">
+        <div id="timer-circle">GO!</div>
+    </div>
+
+    <div id="p1-zone" class="battle-zone" onmousedown="tap(1)" ontouchstart="tap(1)">
+        <div class="score-display" id="p1-score">0</div>
+        <div style="position:absolute; bottom:20px; color:white;">あか プレーヤー</div>
+    </div>
+</div>
+
+<div id="result-popup">
+    <div id="result-msg" class="winner-text"></div>
+    <div id="final-stats"></div>
+    <button class="btn" onclick="location.reload()">もういっかい！</button>
+</div>
+
+<script>
+    let p1Score = 0;
+    let p2Score = 0;
+    let isPlaying = false;
+    let timeLeft = 0;
+
+    function startBattle(seconds) {
+        document.getElementById('setup-screen').style.display = 'none';
+        timeLeft = seconds;
+        p1Score = 0;
+        p2Score = 0;
+        updateDisplay();
+        
+        let countdown = 3;
+        const timerEl = document.getElementById('timer-circle');
+        
+        const countInterval = setInterval(() => {
+            timerEl.innerText = countdown;
+            countdown--;
+            if (countdown < 0) {
+                clearInterval(countInterval);
+                timerEl.innerText = timeLeft;
+                isPlaying = true;
+                startGameTimer();
+            }
+        }, 1000);
+    }
+
+    function startGameTimer() {
+        const gameInterval = setInterval(() => {
+            timeLeft--;
+            document.getElementById('timer-circle').innerText = timeLeft;
+            if (timeLeft <= 0) {
+                clearInterval(gameInterval);
+                isPlaying = false;
+                showResult();
+            }
+        }, 1000);
+    }
+
+    function tap(player) {
+        if (!isPlaying) return;
+
+        if (player === 1) {
+            p1Score++;
+            animateTap('p1-zone');
+        } else {
+            p2Score++;
+            animateTap('p2-zone');
+        }
+        updateDisplay();
+    }
+
+    function animateTap(zoneId) {
+        const zone = document.getElementById(zoneId);
+        zone.style.filter = 'brightness(1.2)';
+        setTimeout(() => zone.style.filter = 'brightness(1.0)', 50);
+    }
+
+    function updateDisplay() {
+        document.getElementById('p1-score').innerText = p1Score;
+        document.getElementById('p2-score').innerText = p2Score;
+    }
+
+    function showResult() {
+        const popup = document.getElementById('result-popup');
+        const msg = document.getElementById('result-msg');
+        const stats = document.getElementById('final-stats');
+        
+        popup.style.display = 'block';
+        
+        if (p1Score > p2Score) {
+            msg.innerText = "あかプレーヤーの かち！";
+            msg.style.color = "var(--p1-color)";
+        } else if (p2Score > p1Score) {
+            msg.innerText = "あおプレーヤーの かち！";
+            msg.style.color = "var(--p2-color)";
+        } else {
+            msg.innerText = "ひきわけ！";
+            msg.style.color = "#888";
+        }
+        
+        stats.innerHTML = `<p>あか: ${p1Score}回 / あお: ${p2Score}回</p>`;
+    }
+</script>
+</body>
+</html>
