@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ジャスト・タイマー</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; background: #f0f2f5; padding-top: 50px; }
+        .container { background: white; width: 300px; margin: auto; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        h1 { font-size: 1.5rem; color: #333; }
+        #display { font-size: 3rem; margin: 20px 0; font-weight: bold; color: #007bff; height: 1.2em; }
+        button { padding: 10px 20px; font-size: 1rem; cursor: pointer; border: none; border-radius: 5px; background: #28a745; color: white; margin: 5px; }
+        button:hover { opacity: 0.9; }
+        #stopBtn { background: #dc3545; display: none; }
+        .hidden { color: transparent !important; }
+        select { padding: 5px; font-size: 1rem; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>ジャスト・タイマー</h1>
+    
+    <div id="setup">
+        <p>目標時間を選んでください</p>
+        <select id="targetSelect">
+            <option value="5">5秒</option>
+            <option value="10">10秒</option>
+            <option value="15">15秒</option>
+            <option value="30">30秒</option>
+        </select><br>
+        <button onclick="startGame()">スタート！</button>
+    </div>
+
+    <div id="game" style="display:none;">
+        <p>目標: <span id="goalLabel"></span>秒</p>
+        <div id="display">0.00</div>
+        <button id="stopBtn" onclick="stopGame()">STOP!</button>
+    </div>
+
+    <div id="result" style="display:none;">
+        <h2 id="resultMsg"></h2>
+        <p>あなたの記録: <span id="finalTime"></span>秒</p>
+        <p>誤差: <span id="diff"></span>秒</p>
+        <button onclick="resetGame()">もう一度</button>
+    </div>
+</div>
+
+<script>
+    let startTime;
+    let timerInterval;
+    let targetTime;
+    const hideThreshold = 3; // 3秒後に隠す
+
+    function startGame() {
+        targetTime = parseInt(document.getElementById('targetSelect').value);
+        document.getElementById('setup').style.display = 'none';
+        document.getElementById('game').style.display = 'block';
+        document.getElementById('stopBtn').style.display = 'inline-block';
+        document.getElementById('goalLabel').innerText = targetTime;
+        
+        startTime = Date.now();
+        timerInterval = setInterval(updateDisplay, 10);
+    }
+
+    function updateDisplay() {
+        let currentTime = (Date.now() - startTime) / 1000;
+        let display = document.getElementById('display');
+        
+        // 指定した秒数を超えたら数字を隠す
+        if (currentTime >= hideThreshold) {
+            display.classList.add('hidden');
+            display.innerText = "??"; 
+        } else {
+            display.innerText = currentTime.toFixed(2);
+        }
+    }
+
+    function stopGame() {
+        clearInterval(timerInterval);
+        let endTime = (Date.now() - startTime) / 1000;
+        let diff = Math.abs(targetTime - endTime).toFixed(3);
+
+        document.getElementById('game').style.display = 'none';
+        document.getElementById('result').style.display = 'block';
+        document.getElementById('finalTime').innerText = endTime.toFixed(3);
+        document.getElementById('diff').innerText = diff;
+
+        let msg = "";
+        if (diff == 0) msg = "神業！ピッタリ！🎯";
+        else if (diff < 0.1) msg = "天才！ほぼ完璧！✨";
+        else if (diff < 0.5) msg = "すごい！惜しい！👏";
+        else msg = "もっと頑張りましょう！😅";
+        
+        document.getElementById('resultMsg').innerText = msg;
+    }
+
+    function resetGame() {
+        document.getElementById('result').style.display = 'none';
+        document.getElementById('setup').style.display = 'block';
+        document.getElementById('display').classList.remove('hidden');
+        document.getElementById('display').innerText = "0.00";
+    }
+</script>
+
+</body>
+</html>
