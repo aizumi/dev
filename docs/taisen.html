@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>わくわく！2にんプレーヤーゲーム</title>
+    <style>
+        :root {
+            --p1-color: #FF6B6B;
+            --p2-color: #4ECDC4;
+            --bg-color: #F7FFF7;
+            --accent: #FFE66D;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
+            background-color: var(--bg-color);
+            overflow: hidden;
+            touch-action: none;
+            user-select: none;
+        }
+
+        /* メニュー画面 */
+        #menu {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            gap: 20px;
+        }
+
+        .btn {
+            padding: 20px 40px;
+            font-size: 24px;
+            font-weight: bold;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 6px 0 #ccc;
+            transition: transform 0.1s;
+        }
+
+        .btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 #ccc;
+        }
+
+        .game-container {
+            display: none;
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        /* 共通：逆さま設定 */
+        .p1-side { transform: rotate(180deg); }
+
+        /* --- ゲーム1: いろはやおし --- */
+        #game1 { background: #FFFAF0; }
+        .palette {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            padding: 20px;
+            height: 35%;
+        }
+        .color-btn {
+            border-radius: 15px;
+            border: 4px solid white;
+        }
+        #g1-target {
+            height: 30%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 50px;
+            border-top: 5px dashed #ddd;
+            border-bottom: 5px dashed #ddd;
+        }
+
+        /* --- ゲーム2: アイスホッケー --- */
+        #game2-canvas { background: #e0f7fa; display: block; }
+
+        /* --- ゲーム3: 爆弾探し --- */
+        #game3 { 
+            display: none;
+            grid-template-rows: 1fr 1fr;
+            background: #f0f0f0;
+        }
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5px;
+            padding: 10px;
+        }
+        .box {
+            background: #FFE66D;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 30px;
+            aspect-ratio: 1;
+            border: 3px solid #f9a825;
+        }
+
+        .back-btn {
+            position: absolute;
+            top: 50%;
+            left: 10px;
+            transform: translateY(-50%);
+            z-index: 100;
+            background: #333;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="menu">
+        <h1 style="color: #FF6B6B;">たのしい！2にんバトル</h1>
+        <button class="btn" style="background: #FFD93D;" onclick="startGame(1)">🎨 いろはやおし</button>
+        <button class="btn" style="background: #6BCB77;" onclick="startGame(2)">🏒 アイスホッケー</button>
+        <button class="btn" style="background: #4D96FF;" onclick="startGame(3)">💣 ばくだんさがし</button>
+    </div>
+
+    <div id="game1" class="game-container">
+        <div class="back-btn" onclick="location.reload()">もどる</div>
+        <div id="p1-palette" class="palette p1-side"></div>
+        <div id="g1-target">準備中...</div>
+        <div id="p2-palette" class="palette"></div>
+    </div>
+
+    <div id="game2" class="game-container">
+        <div class="back-btn" onclick="location.reload()">もどる</div>
+        <canvas id="game2-canvas"></canvas>
+    </div>
+
+    <div id="game3" class="game-container">
+        <div class="back-btn" onclick="location.reload()">もどる</div>
+        <div id="g3-p1" class="grid-container p1-side"></div>
+        <div id="g3-p2" class="grid-container"></div>
+    </div>
+
+    <script>
+        const colors = ['#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF', '#FFA500', '#800080', '#FFC0CB', '#8B4513'];
+
+        function startGame(num) {
+            document.getElementById('menu').style.display = 'none';
+            const containers = document.querySelectorAll('.game-container');
+            containers.forEach(c => c.style.display = 'none');
+            
+            if(num === 1) initColorGame();
+            if(num === 2) initHockeyGame();
+            if(num === 3) initBombGame();
+        }
+
+        // --- ゲーム1のロジック ---
+        let targetColor = "";
+        function initColorGame() {
+            document.getElementById('game1').style.display = 'block';
+            const p1 = document.getElementById('p1-palette');
+            const p2 = document.getElementById('p2-palette');
+            p1.innerHTML = ''; p2.innerHTML = '';
+            
+            colors.forEach(c => {
+                const b1 = createColorBtn(c, 1);
+                const b2 = createColorBtn(c, 2);
+                p1.appendChild(b1);
+                p2.appendChild(b2);
+            });
+            nextRound();
+        }
+
+        function createColorBtn(color, player) {
+            const btn = document.createElement('div');
+            btn.className = 'color-btn';
+            btn.style.backgroundColor = color;
+            btn.onclick = () => checkColor(color, player);
+            return btn;
+        }
+
+        function nextRound() {
+            const targetDiv = document.getElementById('g1-target');
+            targetDiv.style.backgroundColor = 'white';
+            targetDiv.innerText = "まつよ...";
+            setTimeout(() => {
+                targetColor = colors[Math.floor(Math.random() * colors.length)];
+                targetDiv.style.backgroundColor = targetColor;
+                targetDiv.innerText = "おせ！";
+            }, 1000 + Math.random() * 2000);
+        }
+
+        function checkColor(color, player) {
+            if (color === targetColor) {
+                alert(`プレイヤー ${player === 1 ? '上' : '下'} のかち！`);
+                nextRound();
+            }
+        }
+
+        // --- ゲーム2: アイスホッケー (簡易版) ---
+        function initHockeyGame() {
+            const container = document.getElementById('game2');
+            container.style.display = 'block';
+            const canvas = document.getElementById('game2-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            let puck = { x: canvas.width/2, y: canvas.height/2, dx: 4, dy: 4, r: 15 };
+            let p1 = { x: canvas.width/2, y: 50, r: 30 };
+            let p2 = { x: canvas.width/2, y: canvas.height - 50, r: 30 };
+
+            function draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                // センターライン
+                ctx.strokeStyle = "#ccc";
+                ctx.beginPath(); ctx.moveTo(0, canvas.height/2); ctx.lineTo(canvas.width, canvas.height/2); ctx.stroke();
+
+                // パック
+                ctx.fillStyle = "#333";
+                ctx.beginPath(); ctx.arc(puck.x, puck.y, puck.r, 0, Math.PI*2); ctx.fill();
+
+                // プレイヤー
+                ctx.fillStyle = "red";
+                ctx.beginPath(); ctx.arc(p1.x, p1.y, p1.r, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = "blue";
+                ctx.beginPath(); ctx.arc(p2.x, p2.y, p2.r, 0, Math.PI*2); ctx.fill();
+
+                puck.x += puck.dx; puck.y += puck.dy;
+                if(puck.x < 0 || puck.x > canvas.width) puck.dx *= -1;
+                if(puck.y < 0 || puck.y > canvas.height) {
+                    alert("ゴール！");
+                    puck.x = canvas.width/2; puck.y = canvas.height/2;
+                }
+
+                // 当たり判定 (簡易)
+                [p1, p2].forEach(p => {
+                    let dist = Math.hypot(puck.x - p.x, puck.y - p.y);
+                    if(dist < puck.r + p.r) puck.dy *= -1;
+                });
+
+                requestAnimationFrame(draw);
+            }
+            
+            canvas.addEventListener('touchmove', (e) => {
+                const touch = e.touches[0];
+                if(touch.clientY < canvas.height/2) { p1.x = touch.clientX; p1.y = touch.clientY; }
+                else { p2.x = touch.clientX; p2.y = touch.clientY; }
+            });
+            draw();
+        }
+
+        // --- ゲーム3: 爆弾探し ---
+        function initBombGame() {
+            const g3 = document.getElementById('game3');
+            g3.style.display = 'grid';
+            const p1Grid = document.getElementById('g3-p1');
+            const p2Grid = document.getElementById('g3-p2');
+            p1Grid.innerHTML = ''; p2Grid.innerHTML = '';
+
+            const bombIndex = Math.floor(Math.random() * 8);
+            
+            for(let i=0; i<8; i++) {
+                const box1 = document.createElement('div');
+                box1.className = 'box';
+                box1.innerText = '🎁';
+                box1.onclick = () => {
+                    if(i === bombIndex) { box1.innerText = '💥'; setTimeout(()=>alert('ドカーン！上のかたのまけ！'), 100); }
+                    else { box1.innerText = '🍰'; box1.style.background = '#eee'; }
+                };
+                p1Grid.appendChild(box1);
+
+                const box2 = document.createElement('div');
+                box2.className = 'box';
+                box2.innerText = '🎁';
+                box2.onclick = () => {
+                    if(i === bombIndex) { box2.innerText = '💥'; setTimeout(()=>alert('ドカーン！下のかたのまけ！'), 100); }
+                    else { box2.innerText = '🍰'; box2.style.background = '#eee'; }
+                };
+                p2Grid.appendChild(box2);
+            }
+        }
+    </script>
+</body>
+</html>
