@@ -3,70 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>リズム・マスター</title>
+    <title>ザ・タイマー：2つの挑戦</title>
     <style>
-        body { font-family: 'Helvetica Neue', Arial, sans-serif; text-align: center; background: #eef2f7; padding: 20px; color: #333; }
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; text-align: center; background: #f4f7f6; padding: 20px; color: #333; }
         .container { background: white; max-width: 400px; margin: auto; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-        h1 { margin-bottom: 20px; color: #2c3e50; }
-        #display { font-size: 3.5rem; margin: 20px 0; font-weight: bold; color: #3498db; height: 1.5em; transition: color 0.3s; }
+        h1 { font-size: 1.8rem; margin-bottom: 20px; color: #2c3e50; }
+        #display { font-size: 4rem; margin: 30px 0; font-weight: bold; color: #3498db; height: 1.2em; }
         .hidden { color: transparent !important; }
-        button { padding: 15px 30px; font-size: 1.1rem; cursor: pointer; border: none; border-radius: 50px; background: #2ecc71; color: white; margin: 10px; transition: transform 0.1s, background 0.2s; width: 80%; }
-        button:active { transform: scale(0.95); }
-        #lapBtn { background: #f39c12; }
-        #stopBtn { background: #e74c3c; }
-        .log-container { text-align: left; margin-top: 20px; font-size: 0.9rem; max-height: 150px; overflow-y: auto; background: #f9f9f9; padding: 10px; border-radius: 10px; }
-        .log-item { border-bottom: 1px solid #ddd; padding: 5px 0; display: flex; justify-content: space-between; }
-        .perfect { color: #d35400; font-weight: bold; }
+        
+        button { padding: 15px 25px; font-size: 1rem; cursor: pointer; border: none; border-radius: 10px; margin: 10px; transition: 0.2s; }
+        .btn-main { background: #3498db; color: white; width: 80%; }
+        .btn-mode { background: #95a5a6; color: white; width: 80%; }
+        .btn-mode.active { background: #2ecc71; transform: scale(1.05); }
+        #stopBtn { background: #e74c3c; color: white; display: none; width: 80%; font-size: 1.5rem; }
+        #lapBtn { background: #f39c12; color: white; display: none; width: 80%; font-size: 1.5rem; }
+
+        .log-container { text-align: left; margin-top: 20px; font-size: 0.9rem; max-height: 120px; overflow-y: auto; background: #f9f9f9; padding: 10px; border-radius: 10px; display: none; }
+        .log-item { border-bottom: 1px dotted #ccc; padding: 5px; display: flex; justify-content: space-between; }
+        .description { font-size: 0.85rem; color: #7f8c8d; margin-bottom: 20px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>リズム・マスター</h1>
+    <h1>ザ・タイマー</h1>
     
     <div id="setup">
-        <p>目標時間（秒）</p>
-        <select id="targetSelect" style="padding: 10px; width: 100px; font-size: 1rem;">
-            <option value="5">5</option>
-            <option value="10">10</option>
-            <option value="20">20</option>
-        </select>
-        <p style="font-size: 0.8rem; color: #666;">1秒ごとにラップボタンを押せ！</p>
-        <button onclick="startGame()">ゲーム開始</button>
+        <p class="description">モードを選んでスタートしてください</p>
+        
+        <button id="modeJust" class="btn-mode active" onclick="selectMode('JUST')">ピッタリ停止モード</button>
+        <button id="modeRhythm" class="btn-mode" onclick="selectMode('RHYTHM')">リズム刻みモード</button>
+        
+        <div style="margin: 20px 0;">
+            目標時間：
+            <select id="targetSelect" style="padding: 10px; border-radius: 5px;">
+                <option value="5">5秒</option>
+                <option value="10">10秒</option>
+                <option value="20">20秒</option>
+            </select>
+        </div>
+        
+        <button class="btn-main" onclick="startGame()" style="font-weight:bold; font-size:1.2rem;">START</button>
     </div>
 
     <div id="game" style="display:none;">
+        <p id="modeName" style="font-weight:bold; color:#7f8c8d;"></p>
         <p>目標: <span id="goalLabel"></span>秒</p>
         <div id="display">0.00</div>
-        <button id="lapBtn" onclick="recordLap()">LAP! (1秒刻み)</button>
+        
+        <button id="lapBtn" onclick="recordLap()">LAP! (1秒毎)</button>
         <button id="stopBtn" onclick="stopGame()">STOP!</button>
+        
         <div class="log-container" id="lapLog"></div>
     </div>
 
     <div id="result" style="display:none;">
         <h2 id="resultMsg"></h2>
-        <p>最終タイム: <span id="finalTime"></span>秒</p>
-        <p>ラップの平均誤差: <span id="avgDiff"></span>秒</p>
-        <button onclick="resetGame()">タイトルへ戻る</button>
+        <div style="font-size: 1.2rem; margin-bottom: 20px;">
+            <p>記録: <span id="finalTime" style="font-weight:bold; color:#e74c3c;"></span>秒</p>
+            <p id="avgScore" style="display:none;">平均誤差: <span id="avgDiff"></span>秒</p>
+            <p id="justScore">誤差: <span id="finalDiff"></span>秒</p>
+        </div>
+        <button class="btn-main" onclick="resetGame()">もう一度遊ぶ</button>
     </div>
 </div>
 
 <script>
+    let currentMode = 'JUST'; // JUST or RHYTHM
     let startTime;
     let timerInterval;
     let targetTime;
     let lapCount = 0;
     let lapDiffs = [];
-    const hideThreshold = 3;
+    const hideThreshold = 3; // 3秒で数字が消える
+
+    function selectMode(mode) {
+        currentMode = mode;
+        document.getElementById('modeJust').classList.toggle('active', mode === 'JUST');
+        document.getElementById('modeRhythm').classList.toggle('active', mode === 'RHYTHM');
+    }
 
     function startGame() {
         targetTime = parseInt(document.getElementById('targetSelect').value);
         lapCount = 0;
         lapDiffs = [];
-        document.getElementById('lapLog').innerHTML = '';
+        
+        // UI切り替え
         document.getElementById('setup').style.display = 'none';
         document.getElementById('game').style.display = 'block';
+        document.getElementById('result').style.display = 'none';
+        
+        const modeLabel = currentMode === 'JUST' ? "【ピッタリ停止】" : "【リズム刻み】";
+        document.getElementById('modeName').innerText = modeLabel;
         document.getElementById('goalLabel').innerText = targetTime;
+
+        // モード別ボタン表示
+        if (currentMode === 'RHYTHM') {
+            document.getElementById('lapBtn').style.display = 'inline-block';
+            document.getElementById('stopBtn').style.display = 'inline-block';
+            document.getElementById('lapLog').style.display = 'block';
+            document.getElementById('lapLog').innerHTML = '';
+        } else {
+            document.getElementById('lapBtn').style.display = 'none';
+            document.getElementById('stopBtn').style.display = 'inline-block';
+            document.getElementById('lapLog').style.display = 'none';
+        }
         
         startTime = Date.now();
         timerInterval = setInterval(updateDisplay, 10);
@@ -92,28 +133,36 @@
 
         const logItem = document.createElement('div');
         logItem.className = 'log-item';
-        logItem.innerHTML = `<span>${lapCount}秒地点:</span> <span>ズレ ${diff}秒</span>`;
-        const logContainer = document.getElementById('lapLog');
-        logContainer.prepend(logItem); // 新しい記録を上に
+        logItem.innerHTML = `<span>${lapCount}秒地点:</span> <span>ズレ ${diff}s</span>`;
+        document.getElementById('lapLog').prepend(logItem);
     }
 
     function stopGame() {
         clearInterval(timerInterval);
         let endTime = (Date.now() - startTime) / 1000;
-        let finalDiff = Math.abs(targetTime - endTime);
-        lapDiffs.push(finalDiff);
-
-        // 平均誤差の計算
-        let sum = lapDiffs.reduce((a, b) => a + b, 0);
-        let avg = (sum / lapDiffs.length).toFixed(3);
+        let finalDiff = Math.abs(targetTime - endTime).toFixed(3);
 
         document.getElementById('game').style.display = 'none';
         document.getElementById('result').style.display = 'block';
         document.getElementById('finalTime').innerText = endTime.toFixed(3);
-        document.getElementById('avgDiff').innerText = avg;
 
-        let msg = avg < 0.1 ? "リズムの達人！" : avg < 0.3 ? "なかなかの精度です" : "リズムがバラバラかも？";
-        document.getElementById('resultMsg').innerText = msg;
+        if (currentMode === 'RHYTHM') {
+            document.getElementById('avgScore').style.display = 'block';
+            document.getElementById('justScore').style.display = 'none';
+            
+            lapDiffs.push(parseFloat(finalDiff));
+            let sum = lapDiffs.reduce((a, b) => a + b, 0);
+            let avg = (sum / lapDiffs.length).toFixed(3);
+            document.getElementById('avgDiff').innerText = avg;
+            
+            document.getElementById('resultMsg').innerText = avg < 0.15 ? "リズムの達人！" : "安定感を目指そう！";
+        } else {
+            document.getElementById('avgScore').style.display = 'none';
+            document.getElementById('justScore').style.display = 'block';
+            document.getElementById('finalDiff').innerText = finalDiff;
+            
+            document.getElementById('resultMsg').innerText = finalDiff < 0.1 ? "神の体内時計！" : "惜しい！";
+        }
     }
 
     function resetGame() {
