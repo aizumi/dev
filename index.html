@@ -20,6 +20,12 @@ body {
 h2 {
     margin-bottom: 20px;
 }
+/* 問題数を表示するカウンター用 */
+.counter {
+    font-size: 18px;
+    color: #555;
+    margin-bottom: 10px;
+}
 .answer {
     height: 60px;
     font-size: 32px;
@@ -41,6 +47,7 @@ button {
     border: none;
     background: #4da3ff;
     color: #fff;
+    cursor: pointer;
 }
 button:active {
     background: #2f7fd6;
@@ -66,14 +73,37 @@ button:active {
     margin-bottom: 15px;
     background: #ff9f1c;
 }
+/* スタート画面用のスタイル */
+#start-screen {
+    position: fixed;
+    top:0; left:0; width:100%; height:100%;
+    background: rgba(238, 246, 255, 0.95);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+}
+#start-btn {
+    font-size: 28px;
+    padding: 20px 40px;
+    background: #2ecc71;
+    border-radius: 20px;
+    box-shadow: 0 5px 0 #27ae60;
+}
 </style>
 </head>
 <body>
 
+<div id="start-screen">
+    <button id="start-btn" onclick="startApp()">▶ スタートする</button>
+</div>
+
 <div class="container">
     <h2>🎧 おんせい ぶんしょうだい</h2>
+    
+    <div class="counter" id="counter">だい 1 もん / ぜんぶで 5 もん</div>
 
-    <button class="replay" onclick="speak()">🔊 もういちど きく</button>
+    <button class="replay" id="replay-btn" onclick="speak()">🔊 もういちど きく</button>
 
     <div class="answer" id="answer"></div>
 
@@ -98,32 +128,28 @@ button:active {
 
 <script>
 const problems = [
-    {
-        text: "りんごが ろっこ あります。さんこ たべました。のこりは なんこでしょう。",
-        answer: 3
-    },
-    {
-        text: "えんぴつを よんほん もっています。ごほん もらいました。ぜんぶで なんほんでしょう。",
-        answer: 9
-    },
-    {
-        text: "あめを さんにんに よんこずつ くばります。あめは なんこ いりますか。",
-        answer: 12
-    },
-    {
-        text: "バスに はちにん のっています。あとから ななにん のりました。ぜんぶで なんにんでしょう。",
-        answer: 15
-    },
-    {
-        text: "ケーキが じゅうにこ あります。ろっこ くばりました。のこりは なんこでしょう。",
-        answer: 6
-    }
+    { text: "りんごが ろっこ あります。さんこ たべました。のこりは なんこでしょう。", answer: 3 },
+    { text: "えんぴつを よんほん もっています。ごほん もらいました。ぜんぶで なんほんでしょう。", answer: 9 },
+    { text: "あめを さんにんに よんこずつ くばります。あめは なんこ いりますか。", answer: 12 },
+    { text: "バスに はちにん のっています。あとから ななにん のりました。ぜんぶで なんにんでしょう。", answer: 15 },
+    { text: "ケーキが じゅうにこ あります。ろっこ くばりました。のこりは なんこでしょう。", answer: 6 }
 ];
 
 let index = 0;
 let input = "";
 
+// 音声の事前準備（iOS/Safari対策）
+function startApp() {
+    document.getElementById("start-screen").style.display = "none";
+    // 空の音声を一度流すことで、以降自動再生できるようにロックを解除する
+    const uttr = new SpeechSynthesisUtterance("");
+    speechSynthesis.speak(uttr);
+    
+    showProblem();
+}
+
 function speak() {
+    if (index >= problems.length) return;
     const uttr = new SpeechSynthesisUtterance(problems[index].text);
     uttr.lang = "ja-JP";
     uttr.rate = 0.9;   // ゆっくり
@@ -136,6 +162,10 @@ function showProblem() {
     input = "";
     answer.textContent = "";
     result.textContent = "";
+    
+    // カウンターの更新
+    counter.textContent = `だい ${index + 1} もん / ぜんぶで ${problems.length} もん`;
+    
     speak();
 }
 
@@ -151,17 +181,21 @@ function clearAnswer() {
 }
 
 function checkAnswer() {
+    if (input === "") return; // 未入力時は何もしない
+    
     if (Number(input) === problems[index].answer) {
         index++;
-        result.textContent = "せいかい！";
+        result.textContent = "せいかい！🎉";
 
         if (index >= problems.length) {
+            counter.textContent = "おわり！";
             keyword.textContent = "クリア！次は「さなのパンツ」をさがせ";
+            document.getElementById("replay-btn").style.display = "none";
         } else {
-            setTimeout(showProblem, 800);
+            setTimeout(showProblem, 1200); // 次の問題への余韻を少し長めに(0.8秒→1.2秒)
         }
     } else {
-        result.textContent = "ちがうよ。もういちど きいてね";
+        result.textContent = "ちがうよ。もういちど きいてね 😢";
         speak();
     }
 }
@@ -169,12 +203,7 @@ function checkAnswer() {
 const answer = document.getElementById("answer");
 const result = document.getElementById("result");
 const keyword = document.getElementById("keyword");
-
-// 初回はユーザー操作後でないと音が出ない端末対策
-document.body.addEventListener("click", initOnce, { once: true });
-function initOnce() {
-    showProblem();
-}
+const counter = document.getElementById("counter");
 </script>
 
 </body>
