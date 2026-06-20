@@ -108,6 +108,7 @@
     let startTime;
     let timerInterval;
 
+    // 【修正箇所】ヘ音記号（bass）の並びを第1線（ソ）から始まるように修正しました
     const noteData = {
         treble: [
             { name: 'ド', top: 130, ledger: 139 }, { name: 'レ', top: 120, ledger: null },
@@ -116,10 +117,10 @@
             { name: 'シ', top: 70, ledger: null }, { name: 'ド', top: 60, ledger: null }
         ],
         bass: [
-            { name: 'ド', top: 70, ledger: null }, { name: 'レ', top: 60, ledger: null },
-            { name: 'ミ', top: 50, ledger: null }, { name: 'ファ', top: 40, ledger: null },
-            { name: 'ソ', top: 30, ledger: null }, { name: 'ラ', top: 20, ledger: null },
-            { name: 'シ', top: 10, ledger: null }, { name: 'ド', top: 0, ledger: 9 }
+            { name: 'ソ', top: 120, ledger: null }, { name: 'ラ', top: 110, ledger: null },
+            { name: 'シ', top: 100, ledger: null }, { name: 'ド', top: 90, ledger: null },
+            { name: 'レ', top: 80, ledger: null }, { name: 'ミ', top: 70, ledger: null },
+            { name: 'ファ', top: 60, ledger: null }, { name: 'ソ', top: 50, ledger: null }
         ]
     };
 
@@ -130,6 +131,7 @@
             const label = document.createElement('label');
             label.className = 'note-checkbox';
             const isChecked = activeIndices.includes(index) ? 'checked' : '';
+            // チェックボックスのラベル表示はト音記号基準（ド、レ、ミ...）のまま、インデックスを共有します
             label.innerHTML = `<input type="checkbox" value="${index}" ${isChecked} onchange="updateActiveIndices()"> ${note.name}`;
             container.appendChild(label);
         });
