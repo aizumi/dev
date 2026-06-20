@@ -37,14 +37,21 @@
       pointer-events: none;
     }
 
-    /* 画面シェイクアニメーション（不正解時） */
-    @keyframes shake {
-      0%, 100% { transform: translateX(0); }
-      10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
-      20%, 40%, 60%, 80% { transform: translateX(8px); }
+    /* 画面シェイクアニメーション（不正解時 - より激しく！） */
+    @keyframes crazy-shake {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      10% { transform: translate(-8px, -5px) rotate(-3deg); }
+      20% { transform: translate(8px, 5px) rotate(3deg); }
+      30% { transform: translate(-10px, 3px) rotate(-1deg); }
+      40% { transform: translate(10px, -3px) rotate(2deg); }
+      50% { transform: translate(-5px, 5px) rotate(-2deg); }
+      60% { transform: translate(6px, -5px) rotate(1deg); }
+      70% { transform: translate(-8px, 2px) rotate(-3deg); }
+      80% { transform: translate(5px, 5px) rotate(2deg); }
+      90% { transform: translate(-2px, -2px) rotate(-1deg); }
     }
     .shake {
-      animation: shake 0.4s ease-in-out;
+      animation: crazy-shake 0.45s ease-in-out;
     }
 
     /* 正解時のインパルス波 */
@@ -69,12 +76,48 @@
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
+
+    /* ずっこけ音符のアニメーション */
+    @keyframes zukkoke-note {
+      0% { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+      20% { transform: translate(-50%, -70%) scale(1.4) rotate(-30deg); }
+      100% { transform: translate(-50%, 80px) scale(0.8) rotate(360deg); opacity: 0; }
+    }
+    .zukkoke-animation {
+      animation: zukkoke-note 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    /* コミカルな飛び散る絵文字パーティクル */
+    @keyframes pop-particle {
+      0% { transform: translate(-50%, -50%) scale(0); opacity: 1; }
+      100% { transform: translate(var(--tx), var(--ty)) scale(var(--scale)) rotate(var(--rot)); opacity: 0; }
+    }
+    .wrong-particle {
+      position: absolute;
+      pointer-events: none;
+      z-index: 30;
+      font-size: 24px;
+      animation: pop-particle 0.6s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+    }
+
+    /* 画面赤フラッシュ（バラエティ調） */
+    @keyframes comic-flash {
+      0% { opacity: 0; }
+      15% { opacity: 0.45; }
+      100% { opacity: 0; }
+    }
+    .flash-active {
+      animation: comic-flash 0.4s ease-out forwards;
+    }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex items-center justify-center p-4">
 
   <!-- メインゲームコンテナ -->
-  <div id="game-container" class="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100 flex flex-col min-h-[640px] transition-all duration-300">
+  <div id="game-container" class="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100 flex flex-col min-h-[640px] transition-all duration-300 relative">
+    
+    <!-- 画面フラッシュ用レイヤー -->
+    <div id="comic-flash-layer" class="absolute inset-0 bg-red-600 pointer-events-none z-40 opacity-0"></div>
 
     <!-- ==================== 1. セットアップ画面 (Setup State) ==================== -->
     <div id="screen-setup" class="p-6 flex flex-col justify-between flex-grow">
@@ -284,8 +327,13 @@
             <!-- 加線表示用コンテナ -->
             <div id="ledger-lines-container"></div>
 
-            <!-- 音符 (Note) -->
-            <div id="note-element" class="absolute left-[55%] w-5 h-5 rounded-full note-head transition-all duration-150 z-10" style="top: 80px; transform: translate(-50%, -50%);"></div>
+            <!-- 音符のグラフィカルコンテナ -->
+            <div id="note-container" class="absolute left-[55%] w-10 h-10 flex items-center justify-center transition-all duration-150 z-10" style="top: 80px; transform: translate(-50%, -50%);">
+              <!-- 音符 (通常はこれ) -->
+              <div id="note-element" class="w-5 h-5 rounded-full note-head"></div>
+              <!-- コミカルピヨピヨ絵文字（不正解時に表示） -->
+              <div id="note-emoji-overlay" class="absolute hidden text-3xl select-none">😵</div>
+            </div>
 
           </div>
 
@@ -428,6 +476,20 @@
 
     // 音名の全種類（7音）
     const ALL_NOTES_LIST = ["ド", "レ", "ミ", "ファ", "ソ", "ラ", "シ"];
+
+    // コミカルな間違えメッセージ集（ランダムでポップに表示）
+    const WRONG_MESSAGES = [
+      "あちゃーー！",
+      "ずっこけーー！",
+      "おっとっと！",
+      "ちがうよ〜ん！",
+      "どんまいっ！",
+      "ズコーーーッ！",
+      "おしいっ！！"
+    ];
+
+    // 間違えたときに飛び散るコミカルな絵文字プール
+    const WRONG_EMOJIS = ["💥", "🌀", "😭", "🤕", "❌", "💨", "💔"];
 
     // --- ゲーム状態変数 ---
     let currentMode = 'treble'; // 'treble' | 'bass' | 'mix'
@@ -630,6 +692,15 @@
 
     // --- 問題の生成 ---
     function generateQuestion() {
+      // ずっこけ状態の音符スタイルをクリアする
+      const noteElement = document.getElementById('note-element');
+      const emojiOverlay = document.getElementById('note-emoji-overlay');
+      const noteContainer = document.getElementById('note-container');
+      
+      noteElement.classList.remove('hidden');
+      emojiOverlay.classList.add('hidden');
+      noteContainer.classList.remove('zukkoke-animation');
+
       // 現在のモードからト音・ヘ音を判定
       if (currentMode === 'mix') {
         activeClef = Math.random() < 0.5 ? 'treble' : 'bass';
@@ -663,8 +734,7 @@
       activeQuestion = chosenNote;
 
       // --- 五線譜への配置更新 ---
-      const noteElement = document.getElementById('note-element');
-      noteElement.style.top = `${activeQuestion.top}px`;
+      noteContainer.style.top = `${activeQuestion.top}px`;
 
       // 加線の表示
       renderLedgerLines(activeQuestion.top);
@@ -698,6 +768,49 @@
       }
     }
 
+    // --- コミカルな間違えエフェクトの生成 (ポップコーンのように飛び出す絵文字) ---
+    function spawnWrongParticles() {
+      const staffArea = document.getElementById('staff-area');
+      const containerRect = staffArea.getBoundingClientRect();
+      
+      // 音符の中心座標を基準とする (left: 55%, top: activeQuestion.top)
+      const originX = containerRect.width * 0.55;
+      const originY = activeQuestion.top;
+
+      // 8個のコミカルなパーティクルを生成
+      const particleCount = 8;
+      for (let i = 0; i < particleCount; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'wrong-particle';
+        
+        // ランダムな絵文字を選択
+        particle.textContent = WRONG_EMOJIS[Math.floor(Math.random() * WRONG_EMOJIS.length)];
+        
+        // 飛び散る角度と速度のランダム計算
+        const angle = (i * (360 / particleCount) + Math.random() * 20) * (Math.PI / 180);
+        const distance = 60 + Math.random() * 80; // 飛び散る距離
+        const tx = Math.cos(angle) * distance;
+        const ty = Math.sin(angle) * distance;
+        
+        // カスタムCSS変数を設定してアニメーションに渡す
+        particle.style.setProperty('--tx', `${tx}px`);
+        particle.style.setProperty('--ty', `${ty}px`);
+        particle.style.setProperty('--scale', `${0.6 + Math.random() * 0.8}`);
+        particle.style.setProperty('--rot', `${Math.random() * 360}deg`);
+
+        // 初期位置を音符の位置に
+        particle.style.left = `${originX}px`;
+        particle.style.top = `${originY}px`;
+
+        staffArea.appendChild(particle);
+
+        // アニメーション終了後に要素を削除
+        setTimeout(() => {
+          particle.remove();
+        }, 600);
+      }
+    }
+
     // --- 解答判定 ---
     function submitAnswer(selectedName) {
       if (isFeedbackActive) return; // 判定中の連打防止
@@ -710,6 +823,9 @@
       const feedbackText = document.getElementById('feedback-text');
       const gameContainer = document.getElementById('game-container');
       const noteElement = document.getElementById('note-element');
+      const emojiOverlay = document.getElementById('note-emoji-overlay');
+      const noteContainer = document.getElementById('note-container');
+      const flashLayer = document.getElementById('comic-flash-layer');
 
       if (isCorrect) {
         // ⭕ 正解処理
@@ -731,37 +847,60 @@
           return;
         }
 
+        // 次の問題へのディレイ
+        updateComboDisplay();
+        feedbackOverlay.classList.remove('opacity-0', 'scale-90');
+        feedbackOverlay.classList.add('opacity-100', 'scale-100');
+
+        setTimeout(() => {
+          feedbackOverlay.classList.remove('opacity-100', 'scale-100');
+          feedbackOverlay.classList.add('opacity-0', 'scale-90');
+          noteElement.classList.remove('pulse-ok');
+          
+          generateQuestion();
+          isFeedbackActive = false;
+        }, 420);
+
       } else {
-        // ❌ 不正解処理
+        // ❌ コミカル大げさ不正解処理
         currentCombo = 0; // コンボリセット
         playWrongSound();
 
-        feedbackBadge.className = "px-6 py-3 rounded-2xl shadow-xl text-lg font-black tracking-wide flex items-center gap-2 bg-rose-500 text-white";
-        feedbackIcon.textContent = "❌";
-        feedbackText.textContent = "やり直し！！";
+        // 1. ランダムなずっこけワードを設定
+        const randomWrongWord = WRONG_MESSAGES[Math.floor(Math.random() * WRONG_MESSAGES.length)];
+        feedbackBadge.className = "px-6 py-3 rounded-2xl shadow-xl text-lg font-black tracking-wide flex items-center gap-2 bg-rose-500 text-white animate-bounce";
+        feedbackIcon.textContent = "😜";
+        feedbackText.textContent = randomWrongWord;
 
-        // 画面を激しく揺らす
+        // 2. 画面全体を激しくシェイク ＆ コミック風赤フラッシュ
         gameContainer.classList.add('shake');
-        setTimeout(() => {
-          gameContainer.classList.remove('shake');
-        }, 400);
-      }
-
-      updateComboDisplay();
-
-      // 判定フィードバックのアニメーション表示
-      feedbackOverlay.classList.remove('opacity-0', 'scale-90');
-      feedbackOverlay.classList.add('opacity-100', 'scale-100');
-
-      // 0.4秒後に次の問題へ
-      setTimeout(() => {
-        feedbackOverlay.classList.remove('opacity-100', 'scale-100');
-        feedbackOverlay.classList.add('opacity-0', 'scale-90');
-        noteElement.classList.remove('pulse-ok');
+        flashLayer.classList.add('flash-active');
         
-        generateQuestion();
-        isFeedbackActive = false;
-      }, 420);
+        // 3. 音符をピヨピヨ😵に変身させて回転・落下させる
+        noteElement.classList.add('hidden');
+        emojiOverlay.classList.remove('hidden');
+        noteContainer.classList.add('zukkoke-animation');
+
+        // 4. コミカル絵文字パーティクルを大爆発させる！
+        spawnWrongParticles();
+
+        updateComboDisplay();
+
+        // 演出時間を少し眺めるために表示
+        feedbackOverlay.classList.remove('opacity-0', 'scale-90');
+        feedbackOverlay.classList.add('opacity-100', 'scale-100');
+
+        // 演出が終わるのを待ってリセット（0.7秒）
+        setTimeout(() => {
+          feedbackOverlay.classList.remove('opacity-100', 'scale-100');
+          feedbackOverlay.classList.add('opacity-0', 'scale-90');
+          gameContainer.classList.remove('shake');
+          flashLayer.classList.remove('flash-active');
+          
+          generateQuestion();
+          isFeedbackActive = false;
+        }, 750);
+      }
     }
 
     // --- コンボカウンター更新 ---
@@ -935,13 +1074,39 @@
       }, 120);
     }
 
-    // 不正解音
+    // コミカルなボヨヨ〜ン間違え音
     function playWrongSound() {
       if (!audioCtx) return;
-      playTone(150, 'sawtooth', 0.35, 0.15);
+      const now = audioCtx.currentTime;
+      
+      const osc = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      
+      // ノコギリ波で少し濁った音に
+      osc.type = 'sawtooth';
+      
+      // 周波数を「ボヨヨーン」と下降させてから急上昇させる
+      osc.frequency.setValueAtTime(220, now);
+      osc.frequency.exponentialRampToValueAtTime(70, now + 0.18);
+      osc.frequency.exponentialRampToValueAtTime(140, now + 0.35);
+      
+      gainNode.gain.setValueAtTime(0.12, now);
+      gainNode.gain.linearRampToValueAtTime(0.12, now + 0.12);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.4);
+      
+      osc.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      
+      osc.start(now);
+      osc.stop(now + 0.4);
+
+      // おもちゃのラッパ風な「ププー！」というプピ音を後ろで重ねる
       setTimeout(() => {
-        playTone(145, 'sawtooth', 0.3, 0.15);
-      }, 50);
+        playTone(280, 'triangle', 0.15, 0.15);
+      }, 60);
+      setTimeout(() => {
+        playTone(250, 'triangle', 0.2, 0.15);
+      }, 180);
     }
 
     // ファンファーレ
