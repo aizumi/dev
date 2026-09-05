@@ -1,0 +1,1457 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>音符はかせ ～にがてなおとをマスターしよう～</title>
+  <style>
+    /* ==================== リセット & 基本設定（外部依存なし） ==================== */
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: "Hiragino Maru Gothic ProN", "BIZ UDPGothic", "Yu Gothic UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
+      background: linear-gradient(135deg, #e0f2fe 0%, #fdf2f8 55%, #fffbeb 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      color: #1e293b;
+      touch-action: manipulation;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+    select { font-family: inherit; }
+    .hidden { display: none !important; }
+
+    /* ==================== アプリ全体の枠 ==================== */
+    .app-shell {
+      width: 100%;
+      max-width: 28rem;
+      background: #fff;
+      border-radius: 2rem;
+      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+      overflow: hidden;
+      border: 1px solid #f1f5f9;
+      display: flex;
+      flex-direction: column;
+      min-height: 660px;
+      position: relative;
+    }
+    .screen { display: flex; flex-direction: column; justify-content: space-between; flex-grow: 1; padding: 1.5rem; }
+    .screen.scrollable { overflow-y: auto; display: block; }
+
+    /* ==================== 共通パーツ ==================== */
+    .icon-btn {
+      width: 2.25rem; height: 2.25rem; border-radius: 0.75rem;
+      background: #f1f5f9; color: #475569;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.05rem; font-weight: 700; flex-shrink: 0;
+    }
+    .header-row { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 1rem; }
+    .header-title { font-weight: 900; font-size: 1.1rem; color: #0f172a; }
+
+    .hint-box {
+      display: flex; align-items: flex-start; gap: 0.5rem;
+      padding: 0.65rem 0.8rem; border-radius: 0.85rem;
+      font-size: 0.75rem; font-weight: 700; line-height: 1.4;
+      background: #eef2ff; color: #4338ca; border: 1px solid #e0e7ff;
+      margin-bottom: 1rem;
+    }
+    .hint-box.green { background: #ecfdf5; color: #047857; border-color: #d1fae5; }
+
+    .section-block { margin-bottom: 1rem; }
+    .section-label {
+      display: block; font-size: 0.7rem; font-weight: 800; color: #334155;
+      letter-spacing: 0.04em; margin-bottom: 0.5rem;
+    }
+    .range-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+    .link-btn { font-size: 0.65rem; font-weight: 800; color: #4f46e5; }
+    .link-btn.muted { color: #64748b; }
+    .link-sep { color: #cbd5e1; font-size: 0.65rem; }
+    .tiny-hint { font-size: 0.65rem; color: #94a3b8; margin-top: 0.4rem; }
+
+    .select-wrap { position: relative; }
+    .select-input {
+      width: 100%; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.85rem;
+      padding: 0.8rem 2.2rem 0.8rem 1rem; font-weight: 800; color: #1e293b; font-size: 0.95rem;
+      appearance: none; -webkit-appearance: none;
+    }
+    .select-chevron { position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8; pointer-events: none; font-size: 0.8rem; }
+
+    .primary-btn {
+      width: 100%; background: #4f46e5; color: #fff; font-weight: 800;
+      padding: 1rem 1.5rem; border-radius: 1rem; font-size: 1.05rem;
+      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+      box-shadow: 0 8px 16px rgba(79,70,229,0.25);
+    }
+    .primary-btn.green { background: #059669; box-shadow: 0 8px 16px rgba(5,150,105,0.25); }
+    .primary-btn.danger { background: #e11d48; box-shadow: none; font-size: 0.9rem; padding: 0.85rem 1rem; }
+    .secondary-btn { width: 100%; background: #eef2ff; color: #4338ca; font-weight: 800; padding: 0.6rem; border-radius: 0.85rem; font-size: 0.82rem; }
+    .secondary-btn.green { background: #ecfdf5; color: #047857; }
+    .text-btn { width: 100%; color: #94a3b8; font-weight: 800; font-size: 0.75rem; padding: 0.3rem; }
+    .btn-stack { display: flex; flex-direction: column; gap: 0.5rem; }
+
+    /* ==================== ホーム画面 ==================== */
+    .home-topbar { display: flex; justify-content: flex-end; margin-bottom: -0.25rem; }
+    .home-top { text-align: center; margin-bottom: 1.1rem; }
+    .home-mascot { font-size: 2.8rem; margin-bottom: 0.3rem; }
+    .home-title { font-size: 1.5rem; font-weight: 900; color: #0f172a; }
+    .home-subtitle { font-size: 0.75rem; color: #64748b; margin-top: 0.25rem; }
+
+    .home-stats-panel {
+      background: linear-gradient(90deg, #6366f1, #8b5cf6);
+      color: #fff; border-radius: 1rem; padding: 1rem; margin-bottom: 1.1rem;
+      box-shadow: 0 4px 12px rgba(99,102,241,0.3);
+    }
+    .home-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; text-align: center; }
+    .stat-box { background: rgba(255,255,255,0.16); border-radius: 0.75rem; padding: 0.5rem; }
+    .stat-label { display: block; font-size: 0.62rem; font-weight: 800; color: #e0e7ff; }
+    .stat-value { font-weight: 900; font-size: 1.1rem; }
+
+    .mode-list { display: flex; flex-direction: column; gap: 0.7rem; }
+    .mode-card {
+      display: flex; align-items: center; gap: 0.75rem;
+      background: #fff; border: 2px solid #c7d2fe; border-radius: 1rem; padding: 1rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05); text-align: left; width: 100%;
+      transition: transform .1s;
+    }
+    .mode-card:active { transform: scale(0.98); }
+    .mode-card.green { border-color: #a7f3d0; }
+    .mode-card-icon {
+      width: 3rem; height: 3rem; border-radius: 0.85rem;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem; flex-shrink: 0; background: #e0e7ff; color: #4f46e5;
+    }
+    .mode-card.green .mode-card-icon { background: #d1fae5; color: #059669; }
+    .mode-card-title { font-weight: 900; color: #1e293b; }
+    .mode-card-desc { font-size: 0.68rem; color: #64748b; margin-top: 0.1rem; }
+    .mode-card-chevron { color: #cbd5e1; font-size: 1.3rem; flex-shrink: 0; }
+
+    .home-footer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; margin-top: 1.1rem; }
+    .ghost-btn {
+      padding: 0.75rem; border-radius: 1rem; background: #f1f5f9; color: #475569;
+      font-weight: 800; font-size: 0.72rem; display: flex; flex-direction: column;
+      align-items: center; gap: 0.25rem;
+    }
+    .ghost-btn .emoji { font-size: 1.1rem; }
+
+    /* ==================== セットアップ画面 ==================== */
+    .clef-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+    .clef-btn {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 0.75rem 0.5rem; border-radius: 0.85rem; border: 2px solid #e2e8f0;
+      background: #fff; color: #334155; font-weight: 800; font-size: 0.82rem;
+    }
+    .clef-btn .emoji { font-size: 1.25rem; margin-bottom: 0.25rem; }
+    .clef-btn.active { border-color: #4f46e5; background: #eef2ff; color: #4338ca; }
+
+    .checkbox-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.25rem; background: #f1f5f9; padding: 0.4rem; border-radius: 0.85rem; }
+    .note-check-label {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 0.3rem 0.1rem; background: #fff; border-radius: 0.6rem;
+      border: 2px solid #e2e8f0; cursor: pointer;
+    }
+    .note-check-label.off { opacity: 0.4; }
+    .note-check-label.on { border-color: #818cf8; }
+    .note-check-badge {
+      width: 1.5rem; height: 1.5rem; border-radius: 9999px; color: #fff;
+      display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 0.62rem;
+    }
+
+    /* ==================== ゲーム画面 ==================== */
+    .game-topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+    .exit-btn { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.4rem 0.75rem; border-radius: 0.65rem; background: #f1f5f9; color: #475569; font-size: 0.75rem; font-weight: 800; }
+    .mode-badge { padding: 0.3rem 0.7rem; border-radius: 9999px; background: #e0e7ff; color: #4338ca; font-size: 0.68rem; font-weight: 800; }
+    .mode-badge.green { background: #d1fae5; color: #047857; }
+
+    .progress-row { display: flex; justify-content: space-between; font-size: 0.68rem; font-weight: 800; color: #64748b; margin-bottom: 0.3rem; }
+    .progress-track { width: 100%; height: 0.65rem; background: #f1f5f9; border-radius: 9999px; overflow: hidden; margin-bottom: 0.85rem; }
+    .progress-fill { height: 100%; background: #6366f1; border-radius: 9999px; transition: width .3s ease; }
+    .progress-fill.green { background: #10b981; }
+
+    .staff-panel { position: relative; background: rgba(255,251,235,0.4); border: 2px solid #e2e8f0; border-radius: 1.5rem; padding: 1rem; box-shadow: 0 1px 4px rgba(0,0,0,0.04); margin-bottom: 1rem; }
+    .staff-box { position: relative; width: 100%; height: 160px; background: #fff; border-radius: 1rem; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: inset 0 1px 3px rgba(0,0,0,0.05); }
+    .staff-line { position: absolute; left: 0; right: 0; height: 2px; background-color: #94a3b8; }
+    .ledger-line { position: absolute; left: 50%; transform: translateX(-50%); width: 40px; height: 2px; background-color: #64748b; pointer-events: none; }
+    .clef-display { position: absolute; left: 1rem; font-family: 'Times New Roman', serif; line-height: 1; user-select: none; background: linear-gradient(135deg, #4338ca, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .clef-display.treble { top: 50%; transform: translateY(-50%); font-size: 74px; }
+    .clef-display.bass { top: 40%; transform: translateY(-50%); font-size: 70px; }
+    .note-container { position: absolute; left: 55%; width: 2.5rem; height: 2.5rem; display: flex; align-items: center; justify-content: center; transform: translate(-50%, -50%); transition: top .15s; z-index: 10; }
+    .note-head { width: 1.5rem; height: 1.5rem; border-radius: 9999px; box-shadow: 1px 2px 4px rgba(0,0,0,0.3); }
+
+    .listen-panel { position: relative; background: linear-gradient(135deg, #ecfdf5, #eff6ff); border: 2px solid #a7f3d0; border-radius: 1.5rem; padding: 1.5rem; margin-bottom: 1rem; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 180px; }
+    .listen-icon { font-size: 3.75rem; margin-bottom: 0.75rem; }
+    .listen-play-btn { padding: 0.75rem 1.5rem; border-radius: 1rem; background: #10b981; color: #fff; font-weight: 900; font-size: 1rem; display: flex; align-items: center; gap: 0.5rem; box-shadow: 0 6px 12px rgba(16,185,129,0.3); }
+    .listen-hint { font-size: 0.68rem; color: #94a3b8; margin-top: 0.5rem; }
+
+    .feedback-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; opacity: 0; transform: scale(0.9); transition: all .2s; z-index: 20; }
+    .feedback-overlay.show { opacity: 1; transform: scale(1); }
+    .feedback-badge { padding: 0.75rem 1.5rem; border-radius: 1rem; box-shadow: 0 10px 25px rgba(0,0,0,0.15); font-size: 1.1rem; font-weight: 900; display: flex; align-items: center; gap: 0.5rem; color: #fff; }
+    .feedback-badge.correct { background: #10b981; }
+    .feedback-badge.miss { background: #f59e0b; }
+
+    .answer-hint { text-align: center; font-size: 0.75rem; font-weight: 800; color: #94a3b8; margin-bottom: 0.75rem; }
+    .answer-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; margin-bottom: 0.5rem; }
+    .answer-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+    .key-hint { text-align: center; font-size: 0.62rem; color: #94a3b8; margin-top: 0.75rem; }
+
+    .note-answer-btn {
+      background: var(--nc); color: #fff; border-radius: 1rem; padding: 1.1rem 0;
+      font-weight: 900; font-size: 1.15rem;
+      box-shadow: 0 4px 0 rgba(0,0,0,0.18), 0 6px 10px rgba(0,0,0,0.08);
+      transition: transform .1s, box-shadow .1s;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.25);
+    }
+    .note-answer-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,0.18); }
+
+    /* ==================== 結果画面 ==================== */
+    .result-body { margin: auto 0; padding: 1rem 0; text-align: center; }
+    .result-medal { display: inline-flex; align-items: center; justify-content: center; width: 5rem; height: 5rem; border-radius: 9999px; background: #e0e7ff; color: #4338ca; font-size: 2.2rem; margin-bottom: 1rem; box-shadow: inset 0 2px 4px rgba(0,0,0,0.06); }
+    .result-medal.green { background: #d1fae5; color: #047857; }
+    .result-title { font-size: 1.4rem; font-weight: 900; color: #0f172a; margin-bottom: 0.25rem; }
+    .result-subtitle { font-size: 0.75rem; color: #64748b; margin-bottom: 1rem; }
+    .result-score { font-size: 2.4rem; font-weight: 900; color: #4f46e5; margin-bottom: 1rem; }
+    .result-score.green { color: #059669; }
+    .result-notes-list { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; max-width: 22rem; margin: 0 auto; }
+    .result-note-card { display: flex; align-items: center; gap: 0.5rem; background: #f8fafc; border: 1px solid #f1f5f9; border-radius: 0.75rem; padding: 0.5rem 0.7rem; }
+    .result-note-badge { width: 1.75rem; height: 1.75rem; border-radius: 9999px; color: #fff; font-weight: 900; font-size: 0.72rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .result-note-pct { font-size: 0.68rem; font-weight: 800; color: #475569; flex-grow: 1; text-align: left; }
+    .result-note-icon { font-size: 1.1rem; }
+    .new-badge { font-size: 0.55rem; font-weight: 900; color: #f59e0b; }
+
+    /* ==================== 図鑑画面 ==================== */
+    .zukan-desc { font-size: 0.68rem; color: #64748b; margin-bottom: 0.75rem; }
+    .zukan-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.65rem; }
+    .zukan-card { position: relative; overflow: hidden; border-radius: 1.25rem; background: #fff; border: 2px solid #f1f5f9; box-shadow: 0 2px 10px rgba(0,0,0,0.05); padding: 0.9rem 0.4rem; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.1rem; }
+    .zukan-card-note { width: 2.6rem; height: 2.6rem; border-radius: 9999px; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1.05rem; box-shadow: 0 3px 0 rgba(0,0,0,0.15); margin-bottom: 0.25rem; }
+    .zukan-stamp-icon { font-size: 1.5rem; }
+    .zukan-stamp-label { font-size: 0.62rem; font-weight: 800; color: #475569; }
+    .zukan-pct { font-size: 0.56rem; color: #94a3b8; }
+    .zukan-attempts { font-size: 0.56rem; color: #cbd5e1; }
+    .zukan-card.locked { opacity: 0.55; filter: grayscale(0.4); }
+    .zukan-card.gold { border-color: #fbbf24; background: linear-gradient(180deg, #fffbeb, #fff); }
+    .zukan-card.silver { border-color: #cbd5e1; background: linear-gradient(180deg, #f8fafc, #fff); }
+    .zukan-card.bronze { border-color: #d97706; background: linear-gradient(180deg, #fff7ed, #fff); }
+    @keyframes shine-sweep {
+      0% { transform: translateX(-160%) rotate(18deg); }
+      100% { transform: translateX(220%) rotate(18deg); }
+    }
+    .zukan-card.gold::after {
+      content: ''; position: absolute; top: -10%; left: 0; width: 35%; height: 130%;
+      background: linear-gradient(120deg, transparent, rgba(255,255,255,0.75), transparent);
+      animation: shine-sweep 2.6s ease-in-out infinite;
+    }
+
+    /* ==================== せってい画面 ==================== */
+    .option-item { padding: 0.9rem 1rem; background: #f8fafc; border-radius: 1rem; margin-bottom: 0.75rem; border: 1px solid #f1f5f9; }
+    .option-item-label { font-weight: 800; font-size: 0.85rem; color: #1e293b; }
+    .option-item-desc { font-size: 0.68rem; color: #94a3b8; margin-top: 0.15rem; }
+    #reset-toast { text-align: center; font-weight: 800; font-size: 0.75rem; color: #059669; margin-top: 1rem; opacity: 0; transition: opacity .3s; }
+
+    /* ==================== モーダル共通 ==================== */
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,0.45); backdrop-filter: blur(2px); z-index: 50; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+    .modal-card { background: #fff; border-radius: 1.25rem; max-width: 20rem; width: 100%; padding: 1.5rem; box-shadow: 0 20px 40px rgba(0,0,0,0.2); text-align: center; border: 1px solid #f1f5f9; }
+    .modal-icon { width: 3rem; height: 3rem; border-radius: 9999px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; margin: 0 auto 1rem; }
+    .modal-title { font-size: 1rem; font-weight: 900; color: #0f172a; margin-bottom: 0.5rem; }
+    .modal-desc { font-size: 0.75rem; color: #64748b; margin-bottom: 1.4rem; line-height: 1.5; }
+    .modal-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+    .modal-btn-cancel { padding: 0.65rem; background: #f1f5f9; color: #334155; font-weight: 800; border-radius: 0.75rem; font-size: 0.8rem; }
+    .modal-btn-danger { padding: 0.65rem; background: #f43f5e; color: #fff; font-weight: 800; border-radius: 0.75rem; font-size: 0.8rem; }
+    .modal-btn-primary { padding: 0.7rem; background: #f59e0b; color: #fff; font-weight: 800; border-radius: 0.75rem; font-size: 0.85rem; grid-column: 1 / -1; }
+
+    .stamp-unlock-kicker { font-size: 0.68rem; font-weight: 900; color: #f59e0b; letter-spacing: 0.1em; margin-bottom: 0.25rem; }
+    .stamp-unlock-icon { font-size: 3.75rem; margin-bottom: 0.4rem; }
+    .stamp-unlock-note { font-size: 1.4rem; font-weight: 900; color: #1e293b; margin-bottom: 0.2rem; }
+    .stamp-unlock-label { font-size: 0.85rem; font-weight: 800; color: #64748b; margin-bottom: 1rem; }
+
+    /* ==================== アニメーション ==================== */
+    @keyframes pulse-success {
+      0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+      70% { box-shadow: 0 0 0 18px rgba(34, 197, 94, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+    }
+    .pulse-ok { animation: pulse-success 0.55s ease-out; }
+
+    @keyframes gentle-wobble {
+      0%, 100% { transform: translate(-50%, -50%) rotate(0deg); }
+      25% { transform: translate(-50%, -50%) rotate(-10deg); }
+      75% { transform: translate(-50%, -50%) rotate(10deg); }
+    }
+    .wobble { animation: gentle-wobble 0.35s ease-in-out 2; }
+
+    @keyframes speaker-pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.15); }
+    }
+    .speaker-playing { animation: speaker-pulse 0.5s ease-in-out 2; }
+
+    @keyframes pop-particle {
+      0% { transform: translate(-50%, -50%) scale(0); opacity: 1; }
+      100% { transform: translate(var(--tx), var(--ty)) scale(var(--scale)) rotate(var(--rot)); opacity: 0; }
+    }
+    .fx-particle { position: absolute; pointer-events: none; z-index: 30; font-size: 22px; animation: pop-particle 0.7s cubic-bezier(0.1, 0.8, 0.3, 1) forwards; }
+
+    @keyframes stamp-pop {
+      0% { transform: scale(0) rotate(-25deg); opacity: 0; }
+      55% { transform: scale(1.25) rotate(10deg); opacity: 1; }
+      100% { transform: scale(1) rotate(0deg); opacity: 1; }
+    }
+    .stamp-pop-anim { animation: stamp-pop 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.3) forwards; }
+  </style>
+</head>
+<body>
+
+  <div id="app-shell" class="app-shell">
+
+    <!-- ==================== ホーム画面 ==================== -->
+    <div id="screen-home" class="screen">
+      <div>
+        <div class="home-topbar">
+          <button class="icon-btn" onclick="openOptions()" aria-label="せってい">⚙</button>
+        </div>
+        <div class="home-top">
+          <div class="home-mascot">🦉</div>
+          <div class="home-title">音符はかせ</div>
+          <div class="home-subtitle" id="home-mascot-msg">にがてなおとをみつけて、なかよくなろう！</div>
+        </div>
+
+        <div class="home-stats-panel">
+          <div class="home-stats-grid">
+            <div class="stat-box">
+              <span class="stat-label">📖 がくふ図鑑</span>
+              <span id="home-staff-stat" class="stat-value">🏆0 / 7</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-label">🎧 みみ図鑑</span>
+              <span id="home-listen-stat" class="stat-value">🏆0 / 7</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="mode-list">
+          <button onclick="goToStaffSetup()" class="mode-card">
+            <div class="mode-card-icon">📖</div>
+            <div style="flex-grow:1;">
+              <div class="mode-card-title">音符マスタークイズ</div>
+              <div class="mode-card-desc">五線譜をみて、にがてなおとを中心に出題！</div>
+            </div>
+            <span class="mode-card-chevron">›</span>
+          </button>
+
+          <button onclick="goToListenSetup()" class="mode-card green">
+            <div class="mode-card-icon" style="background:#d1fae5;color:#059669;">🎧</div>
+            <div style="flex-grow:1;">
+              <div class="mode-card-title">音当てクイズ</div>
+              <div class="mode-card-desc">音をきいて、ドレミをあてよう！</div>
+            </div>
+            <span class="mode-card-chevron">›</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="home-footer-grid">
+        <button onclick="openZukan('staff')" class="ghost-btn">
+          <span class="emoji">📖🏅</span><span>がくふ図鑑</span>
+        </button>
+        <button onclick="openZukan('listen')" class="ghost-btn">
+          <span class="emoji">🎧🏅</span><span>みみ図鑑</span>
+        </button>
+      </div>
+    </div>
+
+
+    <!-- ==================== 音符マスター：セットアップ ==================== -->
+    <div id="screen-staff-setup" class="screen hidden">
+      <div>
+        <div class="header-row">
+          <button class="icon-btn" onclick="showScreen('screen-home')">←</button>
+          <span class="header-title">📖 音符マスタークイズ</span>
+        </div>
+
+        <div id="staff-weak-hint" class="hint-box"><span>🦉</span><span>まずは あそんでみよう！</span></div>
+
+        <div class="section-block">
+          <span class="section-label">1. きごうをえらぶ</span>
+          <div class="clef-grid">
+            <button type="button" onclick="selectStaffMode('treble')" id="btn-staff-mode-treble" class="clef-btn active">
+              <span class="emoji">🎼</span><span>ト音記号</span>
+            </button>
+            <button type="button" onclick="selectStaffMode('bass')" id="btn-staff-mode-bass" class="clef-btn">
+              <span class="emoji">𝄢</span><span>ヘ音記号</span>
+            </button>
+            <button type="button" onclick="selectStaffMode('mix')" id="btn-staff-mode-mix" class="clef-btn">
+              <span class="emoji">🌀</span><span>まぜこぜ</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="section-block">
+          <div class="range-header">
+            <span class="section-label" style="margin-bottom:0;">2. れんしゅうする おんぷ</span>
+            <div>
+              <button onclick="toggleAllNotes('staff', true)" class="link-btn">すべて</button>
+              <span class="link-sep">|</span>
+              <button onclick="toggleAllNotes('staff', false)" class="link-btn muted">クリア</button>
+            </div>
+          </div>
+          <div id="staff-note-checkboxes" class="checkbox-grid"></div>
+          <p class="tiny-hint">💡 えらんだ おんぷの中から、にがてなものが多めに出るよ</p>
+        </div>
+
+        <div class="section-block">
+          <label for="staff-question-count" class="section-label">3. もんだいすう</label>
+          <div class="select-wrap">
+            <select id="staff-question-count" class="select-input">
+              <option value="8">✏️ 8もん（さくっと）</option>
+              <option value="12" selected>✏️ 12もん（ふつう）</option>
+              <option value="20">✏️ 20もん（しっかり）</option>
+            </select>
+            <span class="select-chevron">▾</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-stack">
+        <button onclick="startStaffGame()" class="primary-btn"><span>クイズをはじめる！</span><span>▶</span></button>
+        <button onclick="openZukan('staff')" class="secondary-btn">📖 がくふ図鑑をみる</button>
+      </div>
+    </div>
+
+
+    <!-- ==================== 音符マスター：ゲーム ==================== -->
+    <div id="screen-staff-game" class="screen hidden">
+      <div>
+        <div class="game-topbar">
+          <button onclick="confirmExit('staff')" class="exit-btn"><span>✕</span><span>やめる</span></button>
+          <div id="staff-game-mode-badge" class="mode-badge">🎼ト音</div>
+        </div>
+
+        <div class="progress-row">
+          <span id="staff-progress-text">1 / 12 もん</span>
+          <span id="staff-score-text">せいかい 0</span>
+        </div>
+        <div class="progress-track"><div id="staff-progress-bar" class="progress-fill" style="width:0%"></div></div>
+
+        <div class="staff-panel">
+          <div id="staff-area" class="staff-box">
+            <div class="staff-line" style="top: 40px;"></div>
+            <div class="staff-line" style="top: 60px;"></div>
+            <div class="staff-line" style="top: 80px;"></div>
+            <div class="staff-line" style="top: 100px;"></div>
+            <div class="staff-line" style="top: 120px;"></div>
+
+            <div id="staff-clef-display" class="clef-display treble">𝄞</div>
+
+            <div id="staff-ledger-lines"></div>
+
+            <div id="staff-note-container" class="note-container" style="top: 80px;">
+              <div id="staff-note-element" class="note-head" style="background:#6366f1;"></div>
+            </div>
+          </div>
+
+          <div id="staff-feedback-overlay" class="feedback-overlay">
+            <div id="staff-feedback-badge" class="feedback-badge">
+              <span id="staff-feedback-icon">⭕</span><span id="staff-feedback-text">せいかい！</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <p class="answer-hint">この おとの なまえは？</p>
+        <div class="answer-grid-4">
+          <button onclick="submitStaffAnswer('ド')" class="note-answer-btn" style="--nc:#ef4444;">ド</button>
+          <button onclick="submitStaffAnswer('レ')" class="note-answer-btn" style="--nc:#f97316;">レ</button>
+          <button onclick="submitStaffAnswer('ミ')" class="note-answer-btn" style="--nc:#f59e0b;">ミ</button>
+          <button onclick="submitStaffAnswer('ファ')" class="note-answer-btn" style="--nc:#22c55e;">ファ</button>
+        </div>
+        <div class="answer-grid-3">
+          <button onclick="submitStaffAnswer('ソ')" class="note-answer-btn" style="--nc:#06b6d4;">ソ</button>
+          <button onclick="submitStaffAnswer('ラ')" class="note-answer-btn" style="--nc:#6366f1;">ラ</button>
+          <button onclick="submitStaffAnswer('シ')" class="note-answer-btn" style="--nc:#ec4899;">シ</button>
+        </div>
+        <p class="key-hint">💡 キーボードの 1〜7 でも答えられるよ</p>
+      </div>
+    </div>
+
+
+    <!-- ==================== 音符マスター：結果 ==================== -->
+    <div id="screen-staff-result" class="screen hidden" style="text-align:center;">
+      <div class="result-body">
+        <div id="staff-result-medal" class="result-medal">🎉</div>
+        <h2 id="staff-result-title" class="result-title">クイズかんりょう！</h2>
+        <p id="staff-result-subtitle" class="result-subtitle">🦉 よくがんばったね！</p>
+        <div id="staff-result-score" class="result-score">8 / 12</div>
+        <div id="staff-result-notes-list" class="result-notes-list"></div>
+      </div>
+      <div class="btn-stack">
+        <button onclick="goToStaffSetup()" class="primary-btn"><span>↺</span><span>もういちどチャレンジ</span></button>
+        <button onclick="openZukan('staff')" class="secondary-btn">📖 図鑑をみる</button>
+        <button onclick="showScreen('screen-home')" class="text-btn">ホームにもどる</button>
+      </div>
+    </div>
+
+
+    <!-- ==================== 音符マスター：図鑑 ==================== -->
+    <div id="screen-staff-zukan" class="screen scrollable hidden">
+      <div class="header-row">
+        <button onclick="closeZukan()" class="icon-btn">←</button>
+        <span class="header-title">📖 がくふ図鑑</span>
+      </div>
+      <p class="zukan-desc">さいきんの せいかいりつが たかいと、かっこいいスタンプがもらえるよ！</p>
+      <div id="staff-zukan-grid" class="zukan-grid"></div>
+    </div>
+
+
+    <!-- ==================== 音当て：セットアップ ==================== -->
+    <div id="screen-listen-setup" class="screen hidden">
+      <div>
+        <div class="header-row">
+          <button class="icon-btn" onclick="showScreen('screen-home')">←</button>
+          <span class="header-title">🎧 音当てクイズ</span>
+        </div>
+
+        <div id="listen-weak-hint" class="hint-box green"><span>🦉</span><span>まずは あそんでみよう！</span></div>
+
+        <div class="section-block">
+          <div class="range-header">
+            <span class="section-label" style="margin-bottom:0;">1. れんしゅうする おと</span>
+            <div>
+              <button onclick="toggleAllNotes('listen', true)" class="link-btn" style="color:#059669;">すべて</button>
+              <span class="link-sep">|</span>
+              <button onclick="toggleAllNotes('listen', false)" class="link-btn muted">クリア</button>
+            </div>
+          </div>
+          <div id="listen-note-checkboxes" class="checkbox-grid"></div>
+        </div>
+
+        <div class="section-block">
+          <label for="listen-question-count" class="section-label">2. もんだいすう</label>
+          <div class="select-wrap">
+            <select id="listen-question-count" class="select-input">
+              <option value="8">🎵 8もん（さくっと）</option>
+              <option value="12" selected>🎵 12もん（ふつう）</option>
+              <option value="20">🎵 20もん（しっかり）</option>
+            </select>
+            <span class="select-chevron">▾</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-stack">
+        <button onclick="startListenGame()" class="primary-btn green"><span>クイズをはじめる！</span><span>▶</span></button>
+        <button onclick="openZukan('listen')" class="secondary-btn green">🎧 みみ図鑑をみる</button>
+      </div>
+    </div>
+
+
+    <!-- ==================== 音当て：ゲーム ==================== -->
+    <div id="screen-listen-game" class="screen hidden">
+      <div>
+        <div class="game-topbar">
+          <button onclick="confirmExit('listen')" class="exit-btn"><span>✕</span><span>やめる</span></button>
+          <div class="mode-badge green">🎧 音当て</div>
+        </div>
+
+        <div class="progress-row">
+          <span id="listen-progress-text">1 / 12 もん</span>
+          <span id="listen-score-text">せいかい 0</span>
+        </div>
+        <div class="progress-track"><div id="listen-progress-bar" class="progress-fill green" style="width:0%"></div></div>
+
+        <div class="listen-panel">
+          <div id="listen-speaker-icon" class="listen-icon">🎵</div>
+          <button id="listen-play-btn" onclick="playCurrentListenTone()" class="listen-play-btn"><span>🔊</span><span>おとを きく</span></button>
+          <p class="listen-hint">なんかいでも きいて いいよ</p>
+
+          <div id="listen-feedback-overlay" class="feedback-overlay">
+            <div id="listen-feedback-badge" class="feedback-badge">
+              <span id="listen-feedback-icon">⭕</span><span id="listen-feedback-text">せいかい！</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <p class="answer-hint">きこえた おとは どれかな？</p>
+        <div class="answer-grid-4">
+          <button onclick="submitListenAnswer('ド')" class="note-answer-btn" style="--nc:#ef4444;">ド</button>
+          <button onclick="submitListenAnswer('レ')" class="note-answer-btn" style="--nc:#f97316;">レ</button>
+          <button onclick="submitListenAnswer('ミ')" class="note-answer-btn" style="--nc:#f59e0b;">ミ</button>
+          <button onclick="submitListenAnswer('ファ')" class="note-answer-btn" style="--nc:#22c55e;">ファ</button>
+        </div>
+        <div class="answer-grid-3">
+          <button onclick="submitListenAnswer('ソ')" class="note-answer-btn" style="--nc:#06b6d4;">ソ</button>
+          <button onclick="submitListenAnswer('ラ')" class="note-answer-btn" style="--nc:#6366f1;">ラ</button>
+          <button onclick="submitListenAnswer('シ')" class="note-answer-btn" style="--nc:#ec4899;">シ</button>
+        </div>
+        <p class="key-hint">💡 キーボードの 1〜7 でも答えられるよ</p>
+      </div>
+    </div>
+
+
+    <!-- ==================== 音当て：結果 ==================== -->
+    <div id="screen-listen-result" class="screen hidden" style="text-align:center;">
+      <div class="result-body">
+        <div id="listen-result-medal" class="result-medal green">🎉</div>
+        <h2 id="listen-result-title" class="result-title">クイズかんりょう！</h2>
+        <p id="listen-result-subtitle" class="result-subtitle">🦉 よくがんばったね！</p>
+        <div id="listen-result-score" class="result-score green">8 / 12</div>
+        <div id="listen-result-notes-list" class="result-notes-list"></div>
+      </div>
+      <div class="btn-stack">
+        <button onclick="goToListenSetup()" class="primary-btn green"><span>↺</span><span>もういちどチャレンジ</span></button>
+        <button onclick="openZukan('listen')" class="secondary-btn green">🎧 図鑑をみる</button>
+        <button onclick="showScreen('screen-home')" class="text-btn">ホームにもどる</button>
+      </div>
+    </div>
+
+
+    <!-- ==================== 音当て：図鑑 ==================== -->
+    <div id="screen-listen-zukan" class="screen scrollable hidden">
+      <div class="header-row">
+        <button onclick="closeZukan()" class="icon-btn">←</button>
+        <span class="header-title">🎧 みみ図鑑</span>
+      </div>
+      <p class="zukan-desc">さいきんの せいかいりつが たかいと、かっこいいスタンプがもらえるよ！</p>
+      <div id="listen-zukan-grid" class="zukan-grid"></div>
+    </div>
+
+
+    <!-- ==================== せってい画面 ==================== -->
+    <div id="screen-options" class="screen scrollable hidden">
+      <div class="header-row">
+        <button onclick="showScreen('screen-home')" class="icon-btn">←</button>
+        <span class="header-title">⚙ せってい</span>
+      </div>
+
+      <div class="section-block">
+        <span class="section-label">きろくについて</span>
+        <div class="option-item">
+          <div class="option-item-label">ちょうせんかいすう</div>
+          <div class="option-item-desc" id="options-data-summary">がくふクイズ 0かい ／ 音当てクイズ 0かい</div>
+        </div>
+      </div>
+
+      <div class="section-block">
+        <span class="section-label">データをリセット</span>
+        <p class="tiny-hint" style="margin-bottom:0.75rem;">スタンプや せいかいりつの きろくを ぜんぶ けします。この そうさは もとに もどせません。</p>
+        <button onclick="openResetModal()" class="primary-btn danger">🗑 きろくをぜんぶリセットする</button>
+        <div id="reset-toast">✅ きろくをリセットしました</div>
+      </div>
+
+      <div class="section-block">
+        <span class="section-label">このアプリについて</span>
+        <p class="tiny-hint">きろくは、この たんまつの ブラウザだけに ほぞんされます（インターネットには おくられません）。GitHub Pages だけで うごく、ひとつの HTML ファイルです。</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 中断確認モーダル -->
+  <div id="exit-modal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-icon" style="background:#fef3c7;color:#d97706;">🤔</div>
+      <div class="modal-title">クイズを やめますか？</div>
+      <div class="modal-desc">ここまでの きろくは、ちゃんと ほぞんされているよ。</div>
+      <div class="modal-btns">
+        <button onclick="closeExitModal()" class="modal-btn-cancel">つづける</button>
+        <button onclick="exitGame()" class="modal-btn-danger">やめる</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- リセット確認モーダル -->
+  <div id="reset-modal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-icon" style="background:#fee2e2;color:#e11d48;">⚠️</div>
+      <div class="modal-title">きろくをリセットしますか？</div>
+      <div class="modal-desc">がくふ図鑑・みみ図鑑の すべてのスタンプと せいかいりつが きえます。この そうさは もとに もどせません。</div>
+      <div class="modal-btns">
+        <button onclick="closeResetModal()" class="modal-btn-cancel">やめる</button>
+        <button onclick="resetAllData()" class="modal-btn-danger">リセットする</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- スタンプ獲得演出オーバーレイ -->
+  <div id="stamp-unlock-overlay" class="modal-backdrop hidden" onclick="hideStampUnlock()">
+    <div class="modal-card">
+      <div class="stamp-unlock-kicker">NEW STAMP GET!</div>
+      <div id="stamp-unlock-icon" class="stamp-unlock-icon stamp-pop-anim">🏆</div>
+      <div id="stamp-unlock-note" class="stamp-unlock-note">ド</div>
+      <div id="stamp-unlock-label" class="stamp-unlock-label">ゴールドスタンプ</div>
+      <button onclick="hideStampUnlock()" class="modal-btn-primary">やったー！</button>
+    </div>
+  </div>
+
+
+  <script>
+    // ==================== マスターデータ ====================
+    const NOTE_NAMES = ["ド", "レ", "ミ", "ファ", "ソ", "ラ", "シ"];
+    const NOTE_COLORS = { "ド": "#ef4444", "レ": "#f97316", "ミ": "#f59e0b", "ファ": "#22c55e", "ソ": "#06b6d4", "ラ": "#6366f1", "シ": "#ec4899" };
+    const LISTEN_FREQS = { "ド": 261.63, "レ": 293.66, "ミ": 329.63, "ファ": 349.23, "ソ": 392.00, "ラ": 440.00, "シ": 493.88 };
+
+    const NOTE_DATA = {
+      treble: [
+        { name: "ラ", top: 20, ledgerLine: "top" },
+        { name: "ソ", top: 30, ledgerLine: "none" },
+        { name: "ファ", top: 40, ledgerLine: "none" },
+        { name: "ミ", top: 50, ledgerLine: "none" },
+        { name: "レ", top: 60, ledgerLine: "none" },
+        { name: "ド", top: 70, ledgerLine: "none" },
+        { name: "シ", top: 80, ledgerLine: "none" },
+        { name: "ラ", top: 90, ledgerLine: "none" },
+        { name: "ソ", top: 100, ledgerLine: "none" },
+        { name: "ファ", top: 110, ledgerLine: "none" },
+        { name: "ミ", top: 120, ledgerLine: "none" },
+        { name: "レ", top: 130, ledgerLine: "none" },
+        { name: "ド", top: 140, ledgerLine: "bottom" }
+      ],
+      bass: [
+        { name: "ド", top: 20, ledgerLine: "top" },
+        { name: "シ", top: 30, ledgerLine: "none" },
+        { name: "ラ", top: 40, ledgerLine: "none" },
+        { name: "ソ", top: 50, ledgerLine: "none" },
+        { name: "ファ", top: 60, ledgerLine: "none" },
+        { name: "ミ", top: 70, ledgerLine: "none" },
+        { name: "レ", top: 80, ledgerLine: "none" },
+        { name: "ド", top: 90, ledgerLine: "none" },
+        { name: "シ", top: 100, ledgerLine: "none" },
+        { name: "ラ", top: 110, ledgerLine: "none" },
+        { name: "ソ", top: 120, ledgerLine: "none" },
+        { name: "ファ", top: 130, ledgerLine: "none" },
+        { name: "ミ", top: 140, ledgerLine: "bottom" }
+      ]
+    };
+
+    const STAFF_KEY = 'onpuHakase_staffStats_v1';
+    const LISTEN_KEY = 'onpuHakase_listenStats_v1';
+    const TIER_RANK = { locked: -1, training: 0, bronze: 1, silver: 2, gold: 3 };
+
+    // ==================== 成績データ管理（すべてローカルストレージ） ====================
+    function emptyStats() {
+      const o = {};
+      NOTE_NAMES.forEach(n => o[n] = { attempts: 0, correct: 0, recent: [] });
+      return o;
+    }
+    function loadStats(key) {
+      const base = emptyStats();
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return base;
+        const parsed = JSON.parse(raw);
+        NOTE_NAMES.forEach(n => { if (parsed[n]) base[n] = parsed[n]; });
+      } catch (e) { /* 読み込み失敗時は初期値のまま */ }
+      return base;
+    }
+    function saveStats(key, obj) {
+      try { localStorage.setItem(key, JSON.stringify(obj)); } catch (e) { /* 保存できなくても続行 */ }
+    }
+    function recordResult(stats, name, isCorrect) {
+      const e = stats[name];
+      e.attempts++;
+      if (isCorrect) e.correct++;
+      e.recent.push(isCorrect ? 1 : 0);
+      if (e.recent.length > 8) e.recent.shift();
+    }
+    function recentAccuracy(entry) {
+      if (!entry.recent.length) return null;
+      const sum = entry.recent.reduce((a, b) => a + b, 0);
+      return sum / entry.recent.length;
+    }
+    // 苦手（正答率が低い・データが少ない）ほど重みが大きくなる
+    function weightForEntry(entry) {
+      const acc = recentAccuracy(entry);
+      if (acc === null) return 1.0;
+      return Math.max(0.25, 1.3 - acc);
+    }
+    function getStamp(entry) {
+      if (entry.attempts === 0) return { tier: 'locked', label: 'みはっけん', icon: '❓', pct: null };
+      if (entry.attempts < 5) return { tier: 'training', label: 'とっくん中', icon: '🌱', pct: Math.round((entry.correct / entry.attempts) * 100) };
+      const acc = recentAccuracy(entry);
+      const pct = Math.round(acc * 100);
+      if (acc >= 0.9) return { tier: 'gold', label: 'ゴールドスタンプ', icon: '🏆', pct };
+      if (acc >= 0.7) return { tier: 'silver', label: 'シルバースタンプ', icon: '🥈', pct };
+      if (acc >= 0.5) return { tier: 'bronze', label: 'ブロンズスタンプ', icon: '🥉', pct };
+      return { tier: 'training', label: 'もうすこし！ファイト', icon: '💪', pct };
+    }
+    function weightedRandomPick(items, weightFn) {
+      const weighted = items.map(it => ({ it, w: weightFn(it) }));
+      const total = weighted.reduce((s, x) => s + x.w, 0);
+      let r = Math.random() * total;
+      for (const { it, w } of weighted) {
+        if (r < w) return it;
+        r -= w;
+      }
+      return weighted[weighted.length - 1].it;
+    }
+
+    let staffStats = loadStats(STAFF_KEY);
+    let listenStats = loadStats(LISTEN_KEY);
+
+    // ==================== 画面切り替え ====================
+    let zukanReturnScreen = 'screen-home';
+    function showScreen(id) {
+      document.querySelectorAll('.screen').forEach(el => el.classList.add('hidden'));
+      document.getElementById(id).classList.remove('hidden');
+    }
+    function openZukan(mode) {
+      const current = document.querySelector('.screen:not(.hidden)');
+      zukanReturnScreen = current ? current.id : 'screen-home';
+      renderZukan(mode);
+      showScreen(mode === 'staff' ? 'screen-staff-zukan' : 'screen-listen-zukan');
+    }
+    function closeZukan() {
+      showScreen(zukanReturnScreen);
+      updateHomeStats();
+    }
+    function openOptions() {
+      updateOptionsSummary();
+      showScreen('screen-options');
+    }
+
+    // ==================== 初期化 ====================
+    window.onload = function () {
+      buildNoteCheckboxes('staff-note-checkboxes', 'staff-note-checkbox');
+      buildNoteCheckboxes('listen-note-checkboxes', 'listen-note-checkbox');
+      updateHomeStats();
+      updateMascotHomeMessage();
+      window.addEventListener('keydown', handleKeyboardInput);
+    };
+
+    function buildNoteCheckboxes(containerId, cbClass) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = NOTE_NAMES.map(name => `
+        <label class="note-check-label on">
+          <input type="checkbox" value="${name}" checked class="${cbClass} hidden">
+          <span class="note-check-badge" style="background:${NOTE_COLORS[name]};">${name}</span>
+        </label>
+      `).join('');
+      container.querySelectorAll('input').forEach(input => {
+        input.addEventListener('change', () => {
+          updateCheckboxUI(input);
+          playTone(523.25, 'sine', 0.03);
+          refreshWeakHints();
+        });
+        updateCheckboxUI(input);
+      });
+    }
+    function updateCheckboxUI(input) {
+      const label = input.parentElement;
+      if (input.checked) {
+        label.classList.remove('off');
+        label.classList.add('on');
+      } else {
+        label.classList.remove('on');
+        label.classList.add('off');
+      }
+    }
+    function toggleAllNotes(mode, select) {
+      const cbClass = mode === 'staff' ? 'staff-note-checkbox' : 'listen-note-checkbox';
+      document.querySelectorAll('.' + cbClass).forEach(cb => {
+        cb.checked = select;
+        updateCheckboxUI(cb);
+      });
+      playTone(600, 'sine', 0.04);
+      refreshWeakHints();
+    }
+
+    // ==================== にがてヒント表示 ====================
+    function computeWeakList(stats, allowedNotes) {
+      return allowedNotes
+        .map(n => ({ name: n, w: weightForEntry(stats[n]), acc: recentAccuracy(stats[n]) }))
+        .sort((a, b) => b.w - a.w);
+    }
+    function refreshWeakHints() {
+      updateWeakHint('staff-note-checkbox', staffStats, 'staff-weak-hint');
+      updateWeakHint('listen-note-checkbox', listenStats, 'listen-weak-hint');
+    }
+    function updateWeakHint(cbClass, stats, hintId) {
+      const allowed = Array.from(document.querySelectorAll('.' + cbClass + ':checked')).map(cb => cb.value);
+      const hintEl = document.getElementById(hintId);
+      const textSpan = hintEl.querySelector('span:last-child');
+      if (allowed.length === 0) {
+        textSpan.textContent = 'おんぷを 1つ以上 えらんでね';
+        return;
+      }
+      const list = computeWeakList(stats, allowed);
+      const everTried = list.some(x => x.acc !== null);
+      if (!everTried) {
+        textSpan.textContent = 'はじめての ちょうせんだね！まんべんなく 出題するよ';
+      } else {
+        const weak = list.filter(x => x.acc !== null).slice(0, 2).map(x => x.name);
+        const untried = list.filter(x => x.acc === null).slice(0, 1).map(x => x.name);
+        const names = [...weak, ...untried].filter((v, i, a) => a.indexOf(v) === i).slice(0, 2);
+        textSpan.textContent = `いま は『${names.join('』『')}』を 中心に出題するよ！`;
+      }
+    }
+
+    // ==================== 音符マスタークイズ ====================
+    let staffMode = 'treble';
+    let staffAllowedNotes = [...NOTE_NAMES];
+    let staffTotalQuestions = 12;
+    let staffQuestionIndex = 0;
+    let staffCorrectCount = 0;
+    let staffQuestion = null;
+    let staffActiveClef = 'treble';
+    let staffPrevKey = null;
+    let staffFeedbackBusy = false;
+    let staffRoundStartTiers = {};
+    let staffRoundNotesTouched = [];
+
+    function goToStaffSetup() {
+      refreshWeakHints();
+      showScreen('screen-staff-setup');
+    }
+    function selectStaffMode(mode) {
+      staffMode = mode;
+      document.querySelectorAll('#screen-staff-setup .clef-btn').forEach(btn => btn.classList.remove('active'));
+      document.getElementById(`btn-staff-mode-${mode}`).classList.add('active');
+      playTone(440, 'triangle', 0.05);
+    }
+
+    function startStaffGame() {
+      staffAllowedNotes = Array.from(document.querySelectorAll('.staff-note-checkbox:checked')).map(cb => cb.value);
+      if (staffAllowedNotes.length === 0) {
+        alert('れんしゅうする おんぷを 1つ以上 えらんでね。');
+        return;
+      }
+      staffTotalQuestions = parseInt(document.getElementById('staff-question-count').value) || 12;
+      staffQuestionIndex = 0;
+      staffCorrectCount = 0;
+      staffPrevKey = null;
+      staffFeedbackBusy = false;
+      staffRoundNotesTouched = [];
+      staffRoundStartTiers = {};
+      NOTE_NAMES.forEach(n => staffRoundStartTiers[n] = getStamp(staffStats[n]).tier);
+
+      initAudio();
+      const modeLabel = staffMode === 'treble' ? '🎼ト音' : staffMode === 'bass' ? '𝄢ヘ音' : '🌀まぜ';
+      document.getElementById('staff-game-mode-badge').textContent = modeLabel;
+
+      showScreen('screen-staff-game');
+      updateStaffProgress();
+      generateStaffQuestion();
+    }
+
+    function generateStaffQuestion() {
+      const noteContainer = document.getElementById('staff-note-container');
+      noteContainer.classList.remove('wobble', 'pulse-ok');
+
+      if (staffMode === 'mix') {
+        staffActiveClef = Math.random() < 0.5 ? 'treble' : 'bass';
+      } else {
+        staffActiveClef = staffMode;
+      }
+
+      const clefDisplay = document.getElementById('staff-clef-display');
+      if (staffActiveClef === 'treble') {
+        clefDisplay.textContent = '𝄞';
+        clefDisplay.className = 'clef-display treble';
+      } else {
+        clefDisplay.textContent = '𝄢';
+        clefDisplay.className = 'clef-display bass';
+      }
+
+      const pool = NOTE_DATA[staffActiveClef].filter(p => staffAllowedNotes.includes(p.name));
+      let chosen = null;
+      let tries = 0;
+      do {
+        chosen = weightedRandomPick(pool, p => weightForEntry(staffStats[p.name]));
+        tries++;
+      } while (pool.length > 1 && staffPrevKey === `${staffActiveClef}-${chosen.top}` && tries < 6);
+
+      staffPrevKey = `${staffActiveClef}-${chosen.top}`;
+      staffQuestion = chosen;
+
+      noteContainer.style.top = `${chosen.top}px`;
+      document.getElementById('staff-note-element').style.background = NOTE_COLORS[chosen.name];
+      renderLedgerLines(chosen.top);
+    }
+
+    function renderLedgerLines(top) {
+      const container = document.getElementById('staff-ledger-lines');
+      container.innerHTML = '';
+      if (top >= 140) {
+        for (let y = 140; y <= top; y += 20) {
+          const line = document.createElement('div');
+          line.className = 'ledger-line';
+          line.style.top = `${y}px`;
+          container.appendChild(line);
+        }
+      } else if (top <= 20) {
+        for (let y = 20; y >= top; y -= 20) {
+          const line = document.createElement('div');
+          line.className = 'ledger-line';
+          line.style.top = `${y}px`;
+          container.appendChild(line);
+        }
+      }
+    }
+
+    function submitStaffAnswer(name) {
+      if (staffFeedbackBusy) return;
+      staffFeedbackBusy = true;
+
+      const isCorrect = (name === staffQuestion.name);
+      recordResult(staffStats, staffQuestion.name, isCorrect);
+      saveStats(STAFF_KEY, staffStats);
+      if (!staffRoundNotesTouched.includes(staffQuestion.name)) staffRoundNotesTouched.push(staffQuestion.name);
+      if (isCorrect) staffCorrectCount++;
+
+      staffQuestionIndex++;
+      updateStaffProgress();
+      showQuizFeedback('staff', isCorrect, document.getElementById('staff-note-container'), document.getElementById('staff-area'), 80);
+
+      setTimeout(() => {
+        hideQuizFeedback('staff');
+        if (staffQuestionIndex >= staffTotalQuestions) {
+          endStaffRound();
+        } else {
+          generateStaffQuestion();
+          staffFeedbackBusy = false;
+        }
+      }, isCorrect ? 550 : 900);
+    }
+
+    function updateStaffProgress() {
+      document.getElementById('staff-progress-text').textContent = `${Math.min(staffQuestionIndex + 1, staffTotalQuestions)} / ${staffTotalQuestions} もん`;
+      document.getElementById('staff-score-text').textContent = `せいかい ${staffCorrectCount}`;
+      document.getElementById('staff-progress-bar').style.width = `${(staffQuestionIndex / staffTotalQuestions) * 100}%`;
+    }
+
+    function endStaffRound() {
+      const leveledUp = [];
+      staffRoundNotesTouched.forEach(name => {
+        const before = staffRoundStartTiers[name] || 'locked';
+        const after = getStamp(staffStats[name]);
+        if (TIER_RANK[after.tier] > TIER_RANK[before] && (after.tier === 'bronze' || after.tier === 'silver' || after.tier === 'gold')) {
+          leveledUp.push({ name, stamp: after });
+        }
+      });
+      renderRoundResult('staff', leveledUp);
+      showScreen('screen-staff-result');
+      updateHomeStats();
+      if (leveledUp.length > 0) {
+        playStampUnlockSound();
+        setTimeout(() => showStampUnlock(leveledUp[0]), 500);
+      } else {
+        playFanfare(staffCorrectCount === staffTotalQuestions);
+      }
+    }
+
+    // ==================== 音当てクイズ ====================
+    let listenAllowedNotes = [...NOTE_NAMES];
+    let listenTotalQuestions = 12;
+    let listenQuestionIndex = 0;
+    let listenCorrectCount = 0;
+    let listenQuestionNote = null;
+    let listenPrevNote = null;
+    let listenFeedbackBusy = false;
+    let listenRoundStartTiers = {};
+    let listenRoundNotesTouched = [];
+
+    function goToListenSetup() {
+      refreshWeakHints();
+      showScreen('screen-listen-setup');
+    }
+
+    function startListenGame() {
+      listenAllowedNotes = Array.from(document.querySelectorAll('.listen-note-checkbox:checked')).map(cb => cb.value);
+      if (listenAllowedNotes.length < 2) {
+        alert('れんしゅうする おとを 2つ以上 えらんでね。');
+        return;
+      }
+      listenTotalQuestions = parseInt(document.getElementById('listen-question-count').value) || 12;
+      listenQuestionIndex = 0;
+      listenCorrectCount = 0;
+      listenPrevNote = null;
+      listenFeedbackBusy = false;
+      listenRoundNotesTouched = [];
+      listenRoundStartTiers = {};
+      NOTE_NAMES.forEach(n => listenRoundStartTiers[n] = getStamp(listenStats[n]).tier);
+
+      initAudio();
+      showScreen('screen-listen-game');
+      updateListenProgress();
+      generateListenQuestion();
+    }
+
+    function generateListenQuestion() {
+      let chosen = null;
+      let tries = 0;
+      do {
+        chosen = weightedRandomPick(listenAllowedNotes, n => weightForEntry(listenStats[n]));
+        tries++;
+      } while (listenAllowedNotes.length > 1 && chosen === listenPrevNote && tries < 6);
+      listenPrevNote = chosen;
+      listenQuestionNote = chosen;
+      document.getElementById('listen-speaker-icon').textContent = '🎵';
+      setTimeout(playCurrentListenTone, 400);
+    }
+
+    function playCurrentListenTone() {
+      if (!listenQuestionNote) return;
+      initAudio();
+      const icon = document.getElementById('listen-speaker-icon');
+      icon.textContent = '🔊';
+      icon.classList.remove('speaker-playing');
+      void icon.offsetWidth;
+      icon.classList.add('speaker-playing');
+      playPianoTone(LISTEN_FREQS[listenQuestionNote]);
+      setTimeout(() => { icon.textContent = '🎵'; }, 700);
+    }
+
+    function submitListenAnswer(name) {
+      if (listenFeedbackBusy) return;
+      listenFeedbackBusy = true;
+
+      const isCorrect = (name === listenQuestionNote);
+      recordResult(listenStats, listenQuestionNote, isCorrect);
+      saveStats(LISTEN_KEY, listenStats);
+      if (!listenRoundNotesTouched.includes(listenQuestionNote)) listenRoundNotesTouched.push(listenQuestionNote);
+      if (isCorrect) listenCorrectCount++;
+
+      listenQuestionIndex++;
+      updateListenProgress();
+      showQuizFeedback('listen', isCorrect, document.getElementById('listen-speaker-icon').parentElement, document.getElementById('listen-speaker-icon').parentElement, 40);
+
+      setTimeout(() => {
+        hideQuizFeedback('listen');
+        if (listenQuestionIndex >= listenTotalQuestions) {
+          endListenRound();
+        } else {
+          generateListenQuestion();
+          listenFeedbackBusy = false;
+        }
+      }, isCorrect ? 550 : 900);
+    }
+
+    function updateListenProgress() {
+      document.getElementById('listen-progress-text').textContent = `${Math.min(listenQuestionIndex + 1, listenTotalQuestions)} / ${listenTotalQuestions} もん`;
+      document.getElementById('listen-score-text').textContent = `せいかい ${listenCorrectCount}`;
+      document.getElementById('listen-progress-bar').style.width = `${(listenQuestionIndex / listenTotalQuestions) * 100}%`;
+    }
+
+    function endListenRound() {
+      const leveledUp = [];
+      listenRoundNotesTouched.forEach(name => {
+        const before = listenRoundStartTiers[name] || 'locked';
+        const after = getStamp(listenStats[name]);
+        if (TIER_RANK[after.tier] > TIER_RANK[before] && (after.tier === 'bronze' || after.tier === 'silver' || after.tier === 'gold')) {
+          leveledUp.push({ name, stamp: after });
+        }
+      });
+      renderRoundResult('listen', leveledUp);
+      showScreen('screen-listen-result');
+      updateHomeStats();
+      if (leveledUp.length > 0) {
+        playStampUnlockSound();
+        setTimeout(() => showStampUnlock(leveledUp[0]), 500);
+      } else {
+        playFanfare(listenCorrectCount === listenTotalQuestions);
+      }
+    }
+
+    // ==================== 共通：フィードバック演出 ====================
+    const CHEER_MESSAGES = ["せいかい！", "やったね！", "その ちょうし！", "ばっちり！"];
+    const MISS_MESSAGES = ["おしい！", "もういちど！", "つぎ がんばろう！", "だいじょうぶ！"];
+    const CHEER_EMOJIS = ["⭐", "✨", "🎵", "🌟"];
+    const MISS_EMOJIS = ["🤔", "💭", "🔁"];
+
+    function showQuizFeedback(mode, isCorrect, wobbleTarget, particleArea, particleY) {
+      const overlay = document.getElementById(`${mode}-feedback-overlay`);
+      const badge = document.getElementById(`${mode}-feedback-badge`);
+      const icon = document.getElementById(`${mode}-feedback-icon`);
+      const text = document.getElementById(`${mode}-feedback-text`);
+
+      if (isCorrect) {
+        playCorrectSound();
+        badge.className = 'feedback-badge correct';
+        icon.textContent = "⭕";
+        text.textContent = CHEER_MESSAGES[Math.floor(Math.random() * CHEER_MESSAGES.length)];
+        if (wobbleTarget) wobbleTarget.classList.add('pulse-ok');
+        spawnParticles(particleArea, particleY, CHEER_EMOJIS, 6);
+      } else {
+        playGentleWrongSound();
+        badge.className = 'feedback-badge miss';
+        icon.textContent = "🤔";
+        text.textContent = MISS_MESSAGES[Math.floor(Math.random() * MISS_MESSAGES.length)];
+        if (wobbleTarget) wobbleTarget.classList.add('wobble');
+        spawnParticles(particleArea, particleY, MISS_EMOJIS, 3);
+      }
+      overlay.classList.add('show');
+    }
+    function hideQuizFeedback(mode) {
+      document.getElementById(`${mode}-feedback-overlay`).classList.remove('show');
+      const wobbleTarget = mode === 'staff' ? document.getElementById('staff-note-container') : document.getElementById('listen-speaker-icon').parentElement;
+      wobbleTarget.classList.remove('pulse-ok', 'wobble');
+    }
+
+    function spawnParticles(areaEl, originY, emojiPool, count) {
+      if (!areaEl) return;
+      const rect = areaEl.getBoundingClientRect();
+      const originX = rect.width * 0.55;
+      for (let i = 0; i < count; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'fx-particle';
+        particle.textContent = emojiPool[Math.floor(Math.random() * emojiPool.length)];
+        const angle = (i * (360 / count) + Math.random() * 25) * (Math.PI / 180);
+        const distance = 50 + Math.random() * 60;
+        particle.style.setProperty('--tx', `${Math.cos(angle) * distance}px`);
+        particle.style.setProperty('--ty', `${Math.sin(angle) * distance}px`);
+        particle.style.setProperty('--scale', `${0.6 + Math.random() * 0.7}`);
+        particle.style.setProperty('--rot', `${Math.random() * 360}deg`);
+        particle.style.left = `${originX}px`;
+        particle.style.top = `${originY}px`;
+        if (getComputedStyle(areaEl).position === 'static') areaEl.style.position = 'relative';
+        areaEl.appendChild(particle);
+        setTimeout(() => particle.remove(), 700);
+      }
+    }
+
+    // ==================== 共通：ラウンド結果表示 ====================
+    function renderRoundResult(mode, leveledUp) {
+      const isStaff = mode === 'staff';
+      const total = isStaff ? staffTotalQuestions : listenTotalQuestions;
+      const correct = isStaff ? staffCorrectCount : listenCorrectCount;
+      const touched = isStaff ? staffRoundNotesTouched : listenRoundNotesTouched;
+      const stats = isStaff ? staffStats : listenStats;
+      const pct = total > 0 ? correct / total : 0;
+
+      const title = document.getElementById(`${mode}-result-title`);
+      const subtitle = document.getElementById(`${mode}-result-subtitle`);
+      const medal = document.getElementById(`${mode}-result-medal`);
+      const scoreEl = document.getElementById(`${mode}-result-score`);
+
+      if (pct === 1) {
+        title.textContent = "パーフェクト！";
+        subtitle.textContent = "🦉 すごい！はかせ級のうでまえだ！";
+        medal.textContent = "🏆";
+      } else if (pct >= 0.8) {
+        title.textContent = "とてもよくできました！";
+        subtitle.textContent = "🦉 じょうずになってきたね！";
+        medal.textContent = "🎉";
+      } else if (pct >= 0.5) {
+        title.textContent = "よくがんばりました！";
+        subtitle.textContent = "🦉 そのちょうしで つづけよう！";
+        medal.textContent = "😊";
+      } else {
+        title.textContent = "クイズかんりょう！";
+        subtitle.textContent = "🦉 だいじょうぶ、れんしゅうすれば できるようになるよ！";
+        medal.textContent = "💪";
+      }
+      scoreEl.textContent = `${correct} / ${total}`;
+
+      const listContainer = document.getElementById(`${mode}-result-notes-list`);
+      if (touched.length === 0) {
+        listContainer.innerHTML = '';
+      } else {
+        listContainer.innerHTML = touched.map(name => {
+          const stamp = getStamp(stats[name]);
+          const isNew = leveledUp.some(l => l.name === name);
+          return `
+            <div class="result-note-card">
+              <span class="result-note-badge" style="background:${NOTE_COLORS[name]};">${name}</span>
+              <span class="result-note-pct">${stamp.pct !== null ? stamp.pct + '%' : '-'}</span>
+              <span class="result-note-icon">${stamp.icon}</span>
+              ${isNew ? '<span class="new-badge">NEW!</span>' : ''}
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    function showStampUnlock(entry) {
+      const iconEl = document.getElementById('stamp-unlock-icon');
+      iconEl.textContent = entry.stamp.icon;
+      iconEl.classList.remove('stamp-pop-anim');
+      void iconEl.offsetWidth;
+      iconEl.classList.add('stamp-pop-anim');
+      document.getElementById('stamp-unlock-note').textContent = entry.name;
+      document.getElementById('stamp-unlock-label').textContent = entry.stamp.label;
+      document.getElementById('stamp-unlock-overlay').classList.remove('hidden');
+    }
+    function hideStampUnlock() {
+      document.getElementById('stamp-unlock-overlay').classList.add('hidden');
+    }
+
+    // ==================== 図鑑 ====================
+    function renderZukan(mode) {
+      const stats = mode === 'staff' ? staffStats : listenStats;
+      const grid = document.getElementById(`${mode}-zukan-grid`);
+      grid.innerHTML = NOTE_NAMES.map(name => {
+        const e = stats[name];
+        const stamp = getStamp(e);
+        const cardClass = stamp.tier === 'locked' ? 'locked' : (stamp.tier === 'gold' || stamp.tier === 'silver' || stamp.tier === 'bronze' ? stamp.tier : '');
+        const pctLine = stamp.pct !== null ? `せいかいりつ ${stamp.pct}%` : 'まだ ちょうせんしていない';
+        return `
+          <div class="zukan-card ${cardClass}" style="--nc:${NOTE_COLORS[name]};">
+            <div class="zukan-card-note" style="background:${NOTE_COLORS[name]};">${name}</div>
+            <div class="zukan-stamp-icon">${stamp.icon}</div>
+            <div class="zukan-stamp-label">${stamp.label}</div>
+            <div class="zukan-pct">${pctLine}</div>
+            <div class="zukan-attempts">ちょうせん ${e.attempts}かい</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ==================== ホーム画面のステータス ====================
+    function updateHomeStats() {
+      const goldCount = stats => NOTE_NAMES.filter(n => getStamp(stats[n]).tier === 'gold').length;
+      document.getElementById('home-staff-stat').textContent = `🏆${goldCount(staffStats)} / 7`;
+      document.getElementById('home-listen-stat').textContent = `🏆${goldCount(listenStats)} / 7`;
+    }
+    function updateMascotHomeMessage() {
+      const totalAttempts = NOTE_NAMES.reduce((s, n) => s + staffStats[n].attempts + listenStats[n].attempts, 0);
+      const msgEl = document.getElementById('home-mascot-msg');
+      msgEl.textContent = totalAttempts === 0
+        ? "はじめまして！いっしょに おんぷを おぼえよう！"
+        : "にがてなおとをみつけて、なかよくなろう！";
+    }
+
+    // ==================== せってい・データリセット ====================
+    function updateOptionsSummary() {
+      const staffTotal = NOTE_NAMES.reduce((s, n) => s + staffStats[n].attempts, 0);
+      const listenTotal = NOTE_NAMES.reduce((s, n) => s + listenStats[n].attempts, 0);
+      document.getElementById('options-data-summary').textContent = `がくふクイズ ${staffTotal}かい ／ 音当てクイズ ${listenTotal}かい`;
+    }
+    function openResetModal() {
+      document.getElementById('reset-modal').classList.remove('hidden');
+    }
+    function closeResetModal() {
+      document.getElementById('reset-modal').classList.add('hidden');
+    }
+    function resetAllData() {
+      try {
+        localStorage.removeItem(STAFF_KEY);
+        localStorage.removeItem(LISTEN_KEY);
+      } catch (e) { /* ストレージが使えなくても続行 */ }
+      staffStats = emptyStats();
+      listenStats = emptyStats();
+      updateHomeStats();
+      updateMascotHomeMessage();
+      updateOptionsSummary();
+      closeResetModal();
+      showResetDoneToast();
+    }
+    function showResetDoneToast() {
+      const toast = document.getElementById('reset-toast');
+      toast.style.opacity = '1';
+      setTimeout(() => { toast.style.opacity = '0'; }, 2200);
+    }
+
+    // ==================== キーボード操作 ====================
+    function handleKeyboardInput(e) {
+      const keyMap = { '1': 'ド', '2': 'レ', '3': 'ミ', '4': 'ファ', '5': 'ソ', '6': 'ラ', '7': 'シ' };
+      if (!keyMap[e.key]) return;
+      if (!document.getElementById('screen-staff-game').classList.contains('hidden') && !staffFeedbackBusy) {
+        submitStaffAnswer(keyMap[e.key]);
+      } else if (!document.getElementById('screen-listen-game').classList.contains('hidden') && !listenFeedbackBusy) {
+        submitListenAnswer(keyMap[e.key]);
+      }
+    }
+
+    // ==================== 中断モーダル ====================
+    let pendingExitMode = null;
+    function confirmExit(mode) {
+      pendingExitMode = mode;
+      playTone(350, 'sine', 0.1);
+      document.getElementById('exit-modal').classList.remove('hidden');
+    }
+    function closeExitModal() {
+      document.getElementById('exit-modal').classList.add('hidden');
+    }
+    function exitGame() {
+      closeExitModal();
+      updateHomeStats();
+      if (pendingExitMode === 'staff') goToStaffSetup();
+      else if (pendingExitMode === 'listen') goToListenSetup();
+      else showScreen('screen-home');
+    }
+
+    // ==================== 音声合成 (Web Audio API・外部素材なし) ====================
+    let audioCtx = null;
+    function initAudio() {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+      } catch (e) { console.warn("Web Audio API not supported", e); }
+    }
+    function playTone(frequency, type = 'sine', duration = 0.1, gainValue = 0.1) {
+      if (!audioCtx) return;
+      const osc = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+      gainNode.gain.setValueAtTime(gainValue, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+      osc.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + duration);
+    }
+    // ピアノ風の音（倍音を重ねる）- 音当てクイズの出題音
+    function playPianoTone(freq) {
+      if (!audioCtx) initAudio();
+      if (!audioCtx) return;
+      const now = audioCtx.currentTime;
+      const harmonics = [1, 2, 3, 4];
+      const gains = [0.5, 0.2, 0.1, 0.05];
+      harmonics.forEach((h, i) => {
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        osc.frequency.setValueAtTime(freq * h, now);
+        osc.type = i === 0 ? 'triangle' : 'sine';
+        g.gain.setValueAtTime(0, now);
+        g.gain.linearRampToValueAtTime(gains[i], now + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 1.1);
+        osc.connect(g);
+        g.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 1.3);
+      });
+    }
+    function playCorrectSound() {
+      if (!audioCtx) return;
+      playTone(523.25, 'sine', 0.1, 0.08);
+      setTimeout(() => playTone(659.25, 'sine', 0.15, 0.08), 60);
+      setTimeout(() => playTone(1046.50, 'sine', 0.25, 0.1), 120);
+    }
+    function playGentleWrongSound() {
+      if (!audioCtx) return;
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(300, now);
+      osc.frequency.exponentialRampToValueAtTime(220, now + 0.2);
+      gainNode.gain.setValueAtTime(0.09, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.3);
+      osc.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + 0.3);
+    }
+    function playFanfare(isPerfect) {
+      if (!audioCtx) return;
+      const notes = isPerfect ? [523.25, 659.25, 783.99, 1046.50] : [392.00, 523.25, 659.25, 783.99];
+      notes.forEach((freq, index) => {
+        setTimeout(() => playTone(freq, 'triangle', 0.4, 0.15), index * 120);
+      });
+    }
+    function playStampUnlockSound() {
+      if (!audioCtx) return;
+      const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51];
+      notes.forEach((freq, index) => {
+        setTimeout(() => playTone(freq, 'triangle', 0.35, 0.14), index * 90);
+      });
+    }
+  </script>
+</body>
+</html>
