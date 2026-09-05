@@ -194,7 +194,8 @@
     .clef-display.treble { top: 50%; transform: translateY(-50%); font-size: 74px; }
     .clef-display.bass { top: 40%; transform: translateY(-50%); font-size: 70px; }
     .note-container { position: absolute; left: 55%; width: 2.5rem; height: 2.5rem; display: flex; align-items: center; justify-content: center; transform: translate(-50%, -50%); transition: top .15s; z-index: 10; }
-    .note-head { width: 1.5rem; height: 1.5rem; border-radius: 9999px; box-shadow: 1px 2px 4px rgba(0,0,0,0.3); }
+    /* 音符はつねに黒（答えの音名で色を変えない） */
+    .note-head { width: 1.5rem; height: 1.5rem; border-radius: 9999px; background: radial-gradient(circle at 30% 30%, #475569, #0f172a); box-shadow: 1px 2px 4px rgba(0,0,0,0.4); }
 
     .listen-panel { position: relative; background: linear-gradient(135deg, #ecfdf5, #eff6ff); border: 2px solid #a7f3d0; border-radius: 1.5rem; padding: 1.5rem; margin-bottom: 1rem; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 180px; }
     .listen-icon { font-size: 3.75rem; margin-bottom: 0.75rem; }
@@ -466,7 +467,7 @@
             <div id="staff-ledger-lines"></div>
 
             <div id="staff-note-container" class="note-container" style="top: 80px;">
-              <div id="staff-note-element" class="note-head" style="background:#6366f1;"></div>
+              <div id="staff-note-element" class="note-head"></div>
             </div>
           </div>
 
@@ -1050,7 +1051,7 @@
       staffQuestion = chosen;
 
       noteContainer.style.top = `${chosen.top}px`;
-      document.getElementById('staff-note-element').style.background = NOTE_COLORS[chosen.name];
+      // 音符の色を答えの音名で変えると答えがバレてしまうので、色は常に一定（黒っぽい音符）にする
       renderLedgerLines(chosen.top);
     }
 
@@ -1513,6 +1514,15 @@
       try {
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         if (audioCtx.state === 'suspended') audioCtx.resume();
+        // iOS Safariなどでは、resume()を呼ぶだけでは実際の音声出力が解錠されないことがあるため、
+        // ユーザー操作（タップ）の中で確実に無音バッファを1つ再生してオーディオを解錠しておく。
+        // これをしないと、少し遅れて（setTimeout経由で）鳴らす音当てクイズの出題音が
+        // 無音になってしまう端末がある。
+        const buffer = audioCtx.createBuffer(1, 1, 22050);
+        const src = audioCtx.createBufferSource();
+        src.buffer = buffer;
+        src.connect(audioCtx.destination);
+        src.start(0);
       } catch (e) { console.warn("Web Audio API not supported", e); }
     }
     function playTone(frequency, type = 'sine', duration = 0.1, gainValue = 0.1) {
