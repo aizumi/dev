@@ -7,7 +7,11 @@
   <style>
     /* ==================== リセット & 基本設定（外部依存なし） ==================== */
     * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; }
+    html, body {
+      margin: 0; padding: 0; height: 100%;
+      overflow: hidden; /* ページ全体は縦にも横にもスクロールさせない（ゆれ防止） */
+      overscroll-behavior: none;
+    }
     body {
       font-family: "Hiragino Maru Gothic ProN", "BIZ UDPGothic", "Yu Gothic UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
       background: linear-gradient(135deg, #e0f2fe 0%, #fdf2f8 55%, #fffbeb 100%);
@@ -37,11 +41,21 @@
       border: 1px solid #f1f5f9;
       display: flex;
       flex-direction: column;
-      min-height: 660px;
+      /* ビューポートより大きくならない高さに固定し、はみ出た分は各画面の内側でスクロールさせる */
+      height: min(700px, calc(100vh - 2rem));
       position: relative;
     }
-    .screen { display: flex; flex-direction: column; justify-content: space-between; flex-grow: 1; padding: 1.5rem; }
-    .screen.scrollable { overflow-y: auto; display: block; }
+    .screen {
+      display: flex; flex-direction: column; justify-content: space-between; flex-grow: 1;
+      padding: 1.5rem;
+      min-height: 0; /* flexアイテムがコンテンツで親を押し広げず、内側スクロールになるようにする */
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain; /* スクロールの巻き込み（ページ全体のバウンド）を防ぐ */
+    }
+    /* 図鑑・せっていなど「上から流し込むだけ」の画面はflexのspace-betweenをやめて通常のブロック表示に */
+    .screen.flow { display: block; }
 
     /* ==================== 共通パーツ ==================== */
     .icon-btn {
@@ -224,8 +238,11 @@
 
     /* ==================== 図鑑画面 ==================== */
     .zukan-desc { font-size: 0.68rem; color: #64748b; margin-bottom: 0.75rem; }
+    .zukan-section { margin-bottom: 1.25rem; }
+    .zukan-section-title { font-weight: 900; font-size: 0.85rem; color: #334155; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.3rem; }
     .zukan-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.65rem; }
     .zukan-card { position: relative; overflow: hidden; border-radius: 1.25rem; background: #fff; border: 2px solid #f1f5f9; box-shadow: 0 2px 10px rgba(0,0,0,0.05); padding: 0.9rem 0.4rem; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.1rem; }
+    .zukan-octave-tag { font-size: 0.56rem; font-weight: 800; color: #818cf8; background: #eef2ff; border-radius: 9999px; padding: 0.05rem 0.4rem; margin-bottom: 0.3rem; }
     .zukan-card-note { width: 2.6rem; height: 2.6rem; border-radius: 9999px; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1.05rem; box-shadow: 0 3px 0 rgba(0,0,0,0.15); margin-bottom: 0.25rem; }
     .zukan-stamp-icon { font-size: 1.5rem; }
     .zukan-stamp-label { font-size: 0.62rem; font-weight: 800; color: #475569; }
@@ -265,6 +282,7 @@
     .stamp-unlock-kicker { font-size: 0.68rem; font-weight: 900; color: #f59e0b; letter-spacing: 0.1em; margin-bottom: 0.25rem; }
     .stamp-unlock-icon { font-size: 3.75rem; margin-bottom: 0.4rem; }
     .stamp-unlock-note { font-size: 1.4rem; font-weight: 900; color: #1e293b; margin-bottom: 0.2rem; }
+    .stamp-unlock-position { font-size: 0.7rem; font-weight: 800; color: #6366f1; margin-bottom: 0.4rem; min-height: 1em; }
     .stamp-unlock-label { font-size: 0.85rem; font-weight: 800; color: #64748b; margin-bottom: 1rem; }
 
     /* ==================== アニメーション ==================== */
@@ -496,13 +514,20 @@
 
 
     <!-- ==================== 音符マスター：図鑑 ==================== -->
-    <div id="screen-staff-zukan" class="screen scrollable hidden">
+    <div id="screen-staff-zukan" class="screen flow hidden">
       <div class="header-row">
         <button onclick="closeZukan()" class="icon-btn">←</button>
         <span class="header-title">📖 がくふ図鑑</span>
       </div>
-      <p class="zukan-desc">さいきんの せいかいりつが たかいと、かっこいいスタンプがもらえるよ！</p>
-      <div id="staff-zukan-grid" class="zukan-grid"></div>
+      <p class="zukan-desc">さいきんの せいかいりつが たかいと、かっこいいスタンプがもらえるよ！おなじ おんぷでも たかさ（オクターブ）がちがうと べつべつに きろくされるよ。</p>
+      <div class="zukan-section">
+        <div class="zukan-section-title">🎼 ト音記号</div>
+        <div id="staff-zukan-grid-treble" class="zukan-grid"></div>
+      </div>
+      <div class="zukan-section">
+        <div class="zukan-section-title">𝄢 ヘ音記号</div>
+        <div id="staff-zukan-grid-bass" class="zukan-grid"></div>
+      </div>
     </div>
 
 
@@ -611,7 +636,7 @@
 
 
     <!-- ==================== 音当て：図鑑 ==================== -->
-    <div id="screen-listen-zukan" class="screen scrollable hidden">
+    <div id="screen-listen-zukan" class="screen flow hidden">
       <div class="header-row">
         <button onclick="closeZukan()" class="icon-btn">←</button>
         <span class="header-title">🎧 みみ図鑑</span>
@@ -622,7 +647,7 @@
 
 
     <!-- ==================== せってい画面 ==================== -->
-    <div id="screen-options" class="screen scrollable hidden">
+    <div id="screen-options" class="screen flow hidden">
       <div class="header-row">
         <button onclick="showScreen('screen-home')" class="icon-btn">←</button>
         <span class="header-title">⚙ せってい</span>
@@ -683,6 +708,7 @@
       <div class="stamp-unlock-kicker">NEW STAMP GET!</div>
       <div id="stamp-unlock-icon" class="stamp-unlock-icon stamp-pop-anim">🏆</div>
       <div id="stamp-unlock-note" class="stamp-unlock-note">ド</div>
+      <div id="stamp-unlock-position" class="stamp-unlock-position"></div>
       <div id="stamp-unlock-label" class="stamp-unlock-label">ゴールドスタンプ</div>
       <button onclick="hideStampUnlock()" class="modal-btn-primary">やったー！</button>
     </div>
@@ -728,23 +754,54 @@
       ]
     };
 
-    const STAFF_KEY = 'onpuHakase_staffStats_v1';
+    // v2: 音符マスタークイズの成績は「クレフ×オクターブ」単位で記録する
+    const STAFF_KEY = 'onpuHakase_staffStats_v2';
     const LISTEN_KEY = 'onpuHakase_listenStats_v1';
     const TIER_RANK = { locked: -1, training: 0, bronze: 1, silver: 2, gold: 3 };
 
+    // ト音記号・ヘ音記号それぞれの譜面上の位置（同じ音名でも高い/低いオクターブは別集計にする）
+    function buildStaffPositions() {
+      const meta = { treble: [], bass: [] };
+      ['treble', 'bass'].forEach(clef => {
+        const list = NOTE_DATA[clef];
+        const byName = {};
+        list.forEach((p, idx) => { (byName[p.name] = byName[p.name] || []).push(idx); });
+        list.forEach((p, idx) => {
+          const group = byName[p.name];
+          let octave = 'mid'; // 同名が1つしかない場合はオクターブ区別なし
+          if (group.length > 1) {
+            const sorted = [...group].sort((a, b) => list[a].top - list[b].top);
+            octave = (idx === sorted[0]) ? 'high' : 'low'; // topが小さいほど譜面上で高い＝高いオクターブ
+          }
+          meta[clef].push({ key: `${clef}-${p.top}`, clef, top: p.top, name: p.name, octave });
+        });
+      });
+      return meta;
+    }
+    const STAFF_POSITIONS = buildStaffPositions();
+    const STAFF_POSITION_LIST = [...STAFF_POSITIONS.treble, ...STAFF_POSITIONS.bass];
+    const STAFF_POSITION_KEYS = STAFF_POSITION_LIST.map(p => p.key);
+    const STAFF_POSITION_BY_KEY = {};
+    STAFF_POSITION_LIST.forEach(p => STAFF_POSITION_BY_KEY[p.key] = p);
+    function positionLabel(pos) {
+      const clefLabel = pos.clef === 'treble' ? '🎼ト音' : '𝄢ヘ音';
+      const octavePrefix = pos.octave === 'high' ? 'たかい' : pos.octave === 'low' ? 'ひくい' : '';
+      return `${clefLabel}の${octavePrefix}${pos.name}`;
+    }
+
     // ==================== 成績データ管理（すべてローカルストレージ） ====================
-    function emptyStats() {
+    function emptyStatsForKeys(keys) {
       const o = {};
-      NOTE_NAMES.forEach(n => o[n] = { attempts: 0, correct: 0, recent: [] });
+      keys.forEach(k => o[k] = { attempts: 0, correct: 0, recent: [] });
       return o;
     }
-    function loadStats(key) {
-      const base = emptyStats();
+    function loadStats(key, keys) {
+      const base = emptyStatsForKeys(keys);
       try {
         const raw = localStorage.getItem(key);
         if (!raw) return base;
         const parsed = JSON.parse(raw);
-        NOTE_NAMES.forEach(n => { if (parsed[n]) base[n] = parsed[n]; });
+        keys.forEach(k => { if (parsed[k]) base[k] = parsed[k]; });
       } catch (e) { /* 読み込み失敗時は初期値のまま */ }
       return base;
     }
@@ -790,8 +847,8 @@
       return weighted[weighted.length - 1].it;
     }
 
-    let staffStats = loadStats(STAFF_KEY);
-    let listenStats = loadStats(LISTEN_KEY);
+    let staffStats = loadStats(STAFF_KEY, STAFF_POSITION_KEYS);
+    let listenStats = loadStats(LISTEN_KEY, NOTE_NAMES);
 
     // ==================== 画面切り替え ====================
     let zukanReturnScreen = 'screen-home';
@@ -816,14 +873,14 @@
 
     // ==================== 初期化 ====================
     window.onload = function () {
-      buildNoteCheckboxes('staff-note-checkboxes', 'staff-note-checkbox');
-      buildNoteCheckboxes('listen-note-checkboxes', 'listen-note-checkbox');
+      buildNoteCheckboxes('staff-note-checkboxes', 'staff-note-checkbox', updateStaffWeakHint);
+      buildNoteCheckboxes('listen-note-checkboxes', 'listen-note-checkbox', updateListenWeakHint);
       updateHomeStats();
       updateMascotHomeMessage();
       window.addEventListener('keydown', handleKeyboardInput);
     };
 
-    function buildNoteCheckboxes(containerId, cbClass) {
+    function buildNoteCheckboxes(containerId, cbClass, onChange) {
       const container = document.getElementById(containerId);
       container.innerHTML = NOTE_NAMES.map(name => `
         <label class="note-check-label on">
@@ -835,7 +892,7 @@
         input.addEventListener('change', () => {
           updateCheckboxUI(input);
           playTone(523.25, 'sine', 0.03);
-          refreshWeakHints();
+          onChange();
         });
         updateCheckboxUI(input);
       });
@@ -857,28 +914,25 @@
         updateCheckboxUI(cb);
       });
       playTone(600, 'sine', 0.04);
-      refreshWeakHints();
+      if (mode === 'staff') updateStaffWeakHint(); else updateListenWeakHint();
     }
 
     // ==================== にがてヒント表示 ====================
+    // 音当てクイズ用（音名だけで集計）
     function computeWeakList(stats, allowedNotes) {
       return allowedNotes
         .map(n => ({ name: n, w: weightForEntry(stats[n]), acc: recentAccuracy(stats[n]) }))
         .sort((a, b) => b.w - a.w);
     }
-    function refreshWeakHints() {
-      updateWeakHint('staff-note-checkbox', staffStats, 'staff-weak-hint');
-      updateWeakHint('listen-note-checkbox', listenStats, 'listen-weak-hint');
-    }
-    function updateWeakHint(cbClass, stats, hintId) {
-      const allowed = Array.from(document.querySelectorAll('.' + cbClass + ':checked')).map(cb => cb.value);
-      const hintEl = document.getElementById(hintId);
+    function updateListenWeakHint() {
+      const allowed = Array.from(document.querySelectorAll('.listen-note-checkbox:checked')).map(cb => cb.value);
+      const hintEl = document.getElementById('listen-weak-hint');
       const textSpan = hintEl.querySelector('span:last-child');
       if (allowed.length === 0) {
-        textSpan.textContent = 'おんぷを 1つ以上 えらんでね';
+        textSpan.textContent = 'おとを 1つ以上 えらんでね';
         return;
       }
-      const list = computeWeakList(stats, allowed);
+      const list = computeWeakList(listenStats, allowed);
       const everTried = list.some(x => x.acc !== null);
       if (!everTried) {
         textSpan.textContent = 'はじめての ちょうせんだね！まんべんなく 出題するよ';
@@ -887,6 +941,30 @@
         const untried = list.filter(x => x.acc === null).slice(0, 1).map(x => x.name);
         const names = [...weak, ...untried].filter((v, i, a) => a.indexOf(v) === i).slice(0, 2);
         textSpan.textContent = `いま は『${names.join('』『')}』を 中心に出題するよ！`;
+      }
+    }
+    // 音符マスタークイズ用（クレフ×オクターブの位置ごとに集計。まぜこぜモードは両方の記号を対象にする）
+    function updateStaffWeakHint() {
+      const allowedNames = Array.from(document.querySelectorAll('.staff-note-checkbox:checked')).map(cb => cb.value);
+      const hintEl = document.getElementById('staff-weak-hint');
+      const textSpan = hintEl.querySelector('span:last-child');
+      if (allowedNames.length === 0) {
+        textSpan.textContent = 'おんぷを 1つ以上 えらんでね';
+        return;
+      }
+      const clefs = staffMode === 'mix' ? ['treble', 'bass'] : [staffMode];
+      const positions = clefs.flatMap(c => STAFF_POSITIONS[c]).filter(p => allowedNames.includes(p.name));
+      const list = positions
+        .map(p => ({ pos: p, w: weightForEntry(staffStats[p.key]), acc: recentAccuracy(staffStats[p.key]) }))
+        .sort((a, b) => b.w - a.w);
+      const everTried = list.some(x => x.acc !== null);
+      if (!everTried) {
+        textSpan.textContent = 'はじめての ちょうせんだね！まんべんなく 出題するよ';
+      } else {
+        const weak = list.filter(x => x.acc !== null).slice(0, 2);
+        const untried = list.filter(x => x.acc === null).slice(0, 1);
+        const labels = [...weak, ...untried].slice(0, 2).map(x => positionLabel(x.pos));
+        textSpan.textContent = `いま は『${labels.join('』『')}』を 中心に出題するよ！`;
       }
     }
 
@@ -902,9 +980,10 @@
     let staffFeedbackBusy = false;
     let staffRoundStartTiers = {};
     let staffRoundNotesTouched = [];
+    let staffQuestionKey = null; // 出題中の位置（クレフ-top）のキー
 
     function goToStaffSetup() {
-      refreshWeakHints();
+      updateStaffWeakHint();
       showScreen('screen-staff-setup');
     }
     function selectStaffMode(mode) {
@@ -912,6 +991,7 @@
       document.querySelectorAll('#screen-staff-setup .clef-btn').forEach(btn => btn.classList.remove('active'));
       document.getElementById(`btn-staff-mode-${mode}`).classList.add('active');
       playTone(440, 'triangle', 0.05);
+      updateStaffWeakHint();
     }
 
     function startStaffGame() {
@@ -927,7 +1007,7 @@
       staffFeedbackBusy = false;
       staffRoundNotesTouched = [];
       staffRoundStartTiers = {};
-      NOTE_NAMES.forEach(n => staffRoundStartTiers[n] = getStamp(staffStats[n]).tier);
+      STAFF_POSITION_KEYS.forEach(k => staffRoundStartTiers[k] = getStamp(staffStats[k]).tier);
 
       initAudio();
       const modeLabel = staffMode === 'treble' ? '🎼ト音' : staffMode === 'bass' ? '𝄢ヘ音' : '🌀まぜ';
@@ -961,11 +1041,12 @@
       let chosen = null;
       let tries = 0;
       do {
-        chosen = weightedRandomPick(pool, p => weightForEntry(staffStats[p.name]));
+        chosen = weightedRandomPick(pool, p => weightForEntry(staffStats[`${staffActiveClef}-${p.top}`]));
         tries++;
       } while (pool.length > 1 && staffPrevKey === `${staffActiveClef}-${chosen.top}` && tries < 6);
 
       staffPrevKey = `${staffActiveClef}-${chosen.top}`;
+      staffQuestionKey = staffPrevKey;
       staffQuestion = chosen;
 
       noteContainer.style.top = `${chosen.top}px`;
@@ -998,9 +1079,9 @@
       staffFeedbackBusy = true;
 
       const isCorrect = (name === staffQuestion.name);
-      recordResult(staffStats, staffQuestion.name, isCorrect);
+      recordResult(staffStats, staffQuestionKey, isCorrect);
       saveStats(STAFF_KEY, staffStats);
-      if (!staffRoundNotesTouched.includes(staffQuestion.name)) staffRoundNotesTouched.push(staffQuestion.name);
+      if (!staffRoundNotesTouched.includes(staffQuestionKey)) staffRoundNotesTouched.push(staffQuestionKey);
       if (isCorrect) staffCorrectCount++;
 
       staffQuestionIndex++;
@@ -1026,11 +1107,11 @@
 
     function endStaffRound() {
       const leveledUp = [];
-      staffRoundNotesTouched.forEach(name => {
-        const before = staffRoundStartTiers[name] || 'locked';
-        const after = getStamp(staffStats[name]);
+      staffRoundNotesTouched.forEach(key => {
+        const before = staffRoundStartTiers[key] || 'locked';
+        const after = getStamp(staffStats[key]);
         if (TIER_RANK[after.tier] > TIER_RANK[before] && (after.tier === 'bronze' || after.tier === 'silver' || after.tier === 'gold')) {
-          leveledUp.push({ name, stamp: after });
+          leveledUp.push({ key, pos: STAFF_POSITION_BY_KEY[key], stamp: after });
         }
       });
       renderRoundResult('staff', leveledUp);
@@ -1056,7 +1137,7 @@
     let listenRoundNotesTouched = [];
 
     function goToListenSetup() {
-      refreshWeakHints();
+      updateListenWeakHint();
       showScreen('screen-listen-setup');
     }
 
@@ -1250,6 +1331,23 @@
       const listContainer = document.getElementById(`${mode}-result-notes-list`);
       if (touched.length === 0) {
         listContainer.innerHTML = '';
+      } else if (isStaff) {
+        listContainer.innerHTML = touched.map(key => {
+          const pos = STAFF_POSITION_BY_KEY[key];
+          const stamp = getStamp(stats[key]);
+          const isNew = leveledUp.some(l => l.key === key);
+          const clefEmoji = pos.clef === 'treble' ? '🎼' : '𝄢';
+          const octaveArrow = pos.octave === 'high' ? '↑' : pos.octave === 'low' ? '↓' : '';
+          const pctText = stamp.pct !== null ? stamp.pct + '%' : '-';
+          return `
+            <div class="result-note-card">
+              <span class="result-note-badge" style="background:${NOTE_COLORS[pos.name]};">${pos.name}</span>
+              <span class="result-note-pct">${clefEmoji}${octaveArrow} ${pctText}</span>
+              <span class="result-note-icon">${stamp.icon}</span>
+              ${isNew ? '<span class="new-badge">NEW!</span>' : ''}
+            </div>
+          `;
+        }).join('');
       } else {
         listContainer.innerHTML = touched.map(name => {
           const stamp = getStamp(stats[name]);
@@ -1272,7 +1370,8 @@
       iconEl.classList.remove('stamp-pop-anim');
       void iconEl.offsetWidth;
       iconEl.classList.add('stamp-pop-anim');
-      document.getElementById('stamp-unlock-note').textContent = entry.name;
+      document.getElementById('stamp-unlock-note').textContent = entry.pos ? entry.pos.name : entry.name;
+      document.getElementById('stamp-unlock-position').textContent = entry.pos ? positionLabel(entry.pos) : '';
       document.getElementById('stamp-unlock-label').textContent = entry.stamp.label;
       document.getElementById('stamp-unlock-overlay').classList.remove('hidden');
     }
@@ -1282,15 +1381,46 @@
 
     // ==================== 図鑑 ====================
     function renderZukan(mode) {
-      const stats = mode === 'staff' ? staffStats : listenStats;
-      const grid = document.getElementById(`${mode}-zukan-grid`);
-      grid.innerHTML = NOTE_NAMES.map(name => {
-        const e = stats[name];
+      if (mode === 'staff') {
+        renderStaffZukanGrid('treble', 'staff-zukan-grid-treble');
+        renderStaffZukanGrid('bass', 'staff-zukan-grid-bass');
+      } else {
+        renderListenZukanGrid();
+      }
+    }
+    function tierCardClass(stamp) {
+      if (stamp.tier === 'locked') return 'locked';
+      return (stamp.tier === 'gold' || stamp.tier === 'silver' || stamp.tier === 'bronze') ? stamp.tier : '';
+    }
+    function renderStaffZukanGrid(clef, gridId) {
+      const grid = document.getElementById(gridId);
+      grid.innerHTML = STAFF_POSITIONS[clef].map(pos => {
+        const e = staffStats[pos.key];
         const stamp = getStamp(e);
-        const cardClass = stamp.tier === 'locked' ? 'locked' : (stamp.tier === 'gold' || stamp.tier === 'silver' || stamp.tier === 'bronze' ? stamp.tier : '');
+        const cardClass = tierCardClass(stamp);
+        const pctLine = stamp.pct !== null ? `せいかいりつ ${stamp.pct}%` : 'まだ ちょうせんしていない';
+        const octaveTag = pos.octave === 'high' ? '↑ たかい' : pos.octave === 'low' ? '↓ ひくい' : '';
+        return `
+          <div class="zukan-card ${cardClass}">
+            ${octaveTag ? `<div class="zukan-octave-tag">${octaveTag}</div>` : ''}
+            <div class="zukan-card-note" style="background:${NOTE_COLORS[pos.name]};">${pos.name}</div>
+            <div class="zukan-stamp-icon">${stamp.icon}</div>
+            <div class="zukan-stamp-label">${stamp.label}</div>
+            <div class="zukan-pct">${pctLine}</div>
+            <div class="zukan-attempts">ちょうせん ${e.attempts}かい</div>
+          </div>
+        `;
+      }).join('');
+    }
+    function renderListenZukanGrid() {
+      const grid = document.getElementById('listen-zukan-grid');
+      grid.innerHTML = NOTE_NAMES.map(name => {
+        const e = listenStats[name];
+        const stamp = getStamp(e);
+        const cardClass = tierCardClass(stamp);
         const pctLine = stamp.pct !== null ? `せいかいりつ ${stamp.pct}%` : 'まだ ちょうせんしていない';
         return `
-          <div class="zukan-card ${cardClass}" style="--nc:${NOTE_COLORS[name]};">
+          <div class="zukan-card ${cardClass}">
             <div class="zukan-card-note" style="background:${NOTE_COLORS[name]};">${name}</div>
             <div class="zukan-stamp-icon">${stamp.icon}</div>
             <div class="zukan-stamp-label">${stamp.label}</div>
@@ -1303,21 +1433,23 @@
 
     // ==================== ホーム画面のステータス ====================
     function updateHomeStats() {
-      const goldCount = stats => NOTE_NAMES.filter(n => getStamp(stats[n]).tier === 'gold').length;
-      document.getElementById('home-staff-stat').textContent = `🏆${goldCount(staffStats)} / 7`;
-      document.getElementById('home-listen-stat').textContent = `🏆${goldCount(listenStats)} / 7`;
+      const staffGold = STAFF_POSITION_KEYS.filter(k => getStamp(staffStats[k]).tier === 'gold').length;
+      const listenGold = NOTE_NAMES.filter(n => getStamp(listenStats[n]).tier === 'gold').length;
+      document.getElementById('home-staff-stat').textContent = `🏆${staffGold} / ${STAFF_POSITION_KEYS.length}`;
+      document.getElementById('home-listen-stat').textContent = `🏆${listenGold} / 7`;
     }
     function updateMascotHomeMessage() {
-      const totalAttempts = NOTE_NAMES.reduce((s, n) => s + staffStats[n].attempts + listenStats[n].attempts, 0);
+      const staffTotal = STAFF_POSITION_KEYS.reduce((s, k) => s + staffStats[k].attempts, 0);
+      const listenTotal = NOTE_NAMES.reduce((s, n) => s + listenStats[n].attempts, 0);
       const msgEl = document.getElementById('home-mascot-msg');
-      msgEl.textContent = totalAttempts === 0
+      msgEl.textContent = (staffTotal + listenTotal) === 0
         ? "はじめまして！いっしょに おんぷを おぼえよう！"
         : "にがてなおとをみつけて、なかよくなろう！";
     }
 
     // ==================== せってい・データリセット ====================
     function updateOptionsSummary() {
-      const staffTotal = NOTE_NAMES.reduce((s, n) => s + staffStats[n].attempts, 0);
+      const staffTotal = STAFF_POSITION_KEYS.reduce((s, k) => s + staffStats[k].attempts, 0);
       const listenTotal = NOTE_NAMES.reduce((s, n) => s + listenStats[n].attempts, 0);
       document.getElementById('options-data-summary').textContent = `がくふクイズ ${staffTotal}かい ／ 音当てクイズ ${listenTotal}かい`;
     }
@@ -1332,8 +1464,8 @@
         localStorage.removeItem(STAFF_KEY);
         localStorage.removeItem(LISTEN_KEY);
       } catch (e) { /* ストレージが使えなくても続行 */ }
-      staffStats = emptyStats();
-      listenStats = emptyStats();
+      staffStats = emptyStatsForKeys(STAFF_POSITION_KEYS);
+      listenStats = emptyStatsForKeys(NOTE_NAMES);
       updateHomeStats();
       updateMascotHomeMessage();
       updateOptionsSummary();
