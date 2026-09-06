@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ポンポンリズム — 10コース</title>
+<style>
+  :root{
+    --ink:#1a1038;
+    --ink-soft:#3d2f6b;
+    --paper:#fff6e9;
+    --pop:#ff2f6d;
+    --pop2:#ffc60a;
+    --mint:#20d3b2;
+    --sky:#4aa8ff;
+    --shadow:6px 6px 0 var(--ink);
+    --shadow-sm:3px 3px 0 var(--ink);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic UI",system-ui,sans-serif;
+    font-weight:800;
+    background:var(--ink);
+    color:var(--ink);
+    overflow:hidden;
+    touch-action:manipulation;
+    user-select:none;
+  }
+  #app{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+
+  .screen{position:absolute;inset:0;display:none;flex-direction:column}
+  .screen.on{display:flex}
+
+  /* ---------- タイトル / コース選択 ---------- */
+  #select{
+    background:
+      repeating-linear-gradient(115deg, #1f1547 0 26px, #1a1038 26px 52px);
+    overflow-y:auto;
+    overscroll-behavior:contain;
+  }
+  .wrap{width:min(940px,100%);margin:0 auto;padding:28px 18px 60px}
+
+  .masthead{
+    position:relative;
+    background:var(--pop2);
+    border:4px solid var(--ink);
+    border-radius:26px;
+    box-shadow:var(--shadow);
+    padding:20px 24px 18px;
+    margin-bottom:26px;
+    overflow:hidden;
+  }
+  .masthead::after{
+    content:"";position:absolute;right:-40px;top:-40px;width:170px;height:170px;
+    background:var(--pop);border-radius:50%;opacity:.9;
+    border:4px solid var(--ink);
+  }
+  .masthead h1{
+    position:relative;z-index:1;
+    font-size:clamp(30px,7vw,54px);line-height:.95;letter-spacing:-.03em;
+    text-shadow:3px 3px 0 var(--paper);
+  }
+  .masthead p{position:relative;z-index:1;margin-top:10px;font-size:14px;font-weight:700;max-width:30ch;line-height:1.5}
+
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:22px}
+  .btn{
+    font:inherit;font-size:14px;
+    background:var(--paper);color:var(--ink);
+    border:3px solid var(--ink);border-radius:999px;
+    padding:9px 18px;cursor:pointer;box-shadow:var(--shadow-sm);
+    transition:transform .06s ease, box-shadow .06s ease;
+  }
+  .btn:active{transform:translate(3px,3px);box-shadow:0 0 0 var(--ink)}
+  .btn:focus-visible{outline:3px solid var(--mint);outline-offset:2px}
+  .btn.primary{background:var(--pop);color:var(--paper)}
+  .btn.ghost{background:transparent;color:var(--paper);border-color:var(--paper);box-shadow:none}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(178px,1fr));gap:16px}
+  .card{
+    position:relative;text-align:left;font:inherit;cursor:pointer;
+    border:4px solid var(--ink);border-radius:20px;
+    padding:14px 14px 12px;min-height:150px;
+    display:flex;flex-direction:column;justify-content:space-between;
+    box-shadow:var(--shadow);
+    transition:transform .08s ease, box-shadow .08s ease;
+    color:var(--ink);
+  }
+  .card:hover{transform:translate(-2px,-2px);box-shadow:8px 8px 0 var(--ink)}
+  .card:active{transform:translate(3px,3px);box-shadow:0 0 0 var(--ink)}
+  .card:focus-visible{outline:3px solid var(--mint);outline-offset:3px}
+  .card .no{
+    font-size:34px;line-height:1;letter-spacing:-.05em;opacity:.55;
+  }
+  .card .nm{font-size:18px;line-height:1.2;margin-top:6px}
+  .card .sb{font-size:11px;font-weight:700;margin-top:4px;opacity:.75;line-height:1.35}
+  .card .foot{display:flex;justify-content:space-between;align-items:flex-end;margin-top:12px;font-size:11px;font-weight:800}
+  .card .rank{
+    background:var(--ink);color:var(--paper);border-radius:8px;padding:3px 8px;font-size:11px;
+  }
+  .card.locked{background:#2a2154 !important;color:#7e73ab;border-color:#3a3070;box-shadow:4px 4px 0 #120c2c;cursor:not-allowed}
+  .card.locked:hover{transform:none;box-shadow:4px 4px 0 #120c2c}
+  .card.locked .no{opacity:.4}
+  .lockmark{font-size:26px;line-height:1}
+
+  .settings{
+    margin-top:26px;background:var(--paper);border:4px solid var(--ink);border-radius:20px;
+    padding:16px 18px;box-shadow:var(--shadow);
+  }
+  .settings h2{font-size:16px;margin-bottom:4px}
+  .settings .hint{font-size:12px;font-weight:700;line-height:1.5;opacity:.8;margin-bottom:12px}
+  .row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  input[type=range]{flex:1;min-width:180px;accent-color:var(--pop)}
+  .val{font-variant-numeric:tabular-nums;font-size:14px;min-width:72px}
+
+  /* ---------- ゲーム ---------- */
+  #game{background:#0e0a22;align-items:center;justify-content:center}
+  .stage{position:relative;width:100%;height:100%;display:flex;flex-direction:column}
+  #hud{
+    position:absolute;top:0;left:0;right:0;z-index:3;
+    display:flex;align-items:center;gap:12px;padding:12px 14px;
+    color:var(--paper);font-size:13px;
+    text-shadow:2px 2px 0 rgba(0,0,0,.45);
+  }
+  #hud .quit{
+    font:inherit;font-size:12px;background:rgba(255,255,255,.16);color:#fff;
+    border:2px solid rgba(255,255,255,.6);border-radius:999px;padding:5px 12px;cursor:pointer;
+  }
+  #bar{flex:1;height:12px;background:rgba(0,0,0,.32);border:2px solid rgba(255,255,255,.55);border-radius:999px;overflow:hidden}
+  #barFill{height:100%;width:0;background:var(--pop2)}
+  #combo{font-size:15px;font-variant-numeric:tabular-nums}
+  canvas{display:block;width:100%;height:100%;image-rendering:auto}
+  #cvWrap{position:absolute;inset:0}
+
+  #pads{position:absolute;left:0;right:0;bottom:0;z-index:4;display:flex;gap:10px;padding:10px}
+  .pad{
+    flex:1;height:66px;border-radius:16px;border:3px solid rgba(255,255,255,.7);
+    background:rgba(255,255,255,.13);color:#fff;font:inherit;font-size:15px;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+    backdrop-filter:blur(2px);
+  }
+  /* マウス環境ではキー操作が主なので、パッドは細いガイドに */
+  @media (hover:hover) and (pointer:fine){
+    .pad{height:42px;font-size:13px;opacity:.72;border-width:2px}
+    #pads{padding:8px 10px}
+  }
+  .pad.flash{background:rgba(255,255,255,.5)}
+  body.nopad #pads{display:none}
+
+  /* ---------- 結果 ---------- */
+  #result{background:rgba(14,10,34,.94);align-items:center;justify-content:center;backdrop-filter:blur(3px)}
+  .panel{
+    width:min(420px,90vw);background:var(--paper);border:5px solid var(--ink);border-radius:26px;
+    box-shadow:10px 10px 0 rgba(0,0,0,.5);padding:26px 24px;text-align:center;
+  }
+  .panel .stamp{
+    display:inline-block;font-size:44px;line-height:1;letter-spacing:-.04em;
+    border:5px solid var(--pop);color:var(--pop);border-radius:16px;
+    padding:10px 22px;transform:rotate(-6deg);margin:6px 0 14px;
+  }
+  .panel .stamp.miss{border-color:var(--ink-soft);color:var(--ink-soft)}
+  .panel h3{font-size:19px;margin-bottom:2px}
+  .panel .pct{font-size:56px;letter-spacing:-.04em;font-variant-numeric:tabular-nums;line-height:1}
+  .panel .brk{display:flex;justify-content:center;gap:16px;margin:14px 0 18px;font-size:13px}
+  .panel .brk b{display:block;font-size:22px;font-variant-numeric:tabular-nums}
+  .panel .msg{font-size:13px;font-weight:700;line-height:1.55;margin-bottom:18px;opacity:.85}
+  .panel .acts{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+
+  #boot{position:absolute;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;background:var(--ink);color:var(--paper);text-align:center;padding:24px}
+  #boot .in{max-width:420px}
+  #boot h1{font-size:clamp(34px,9vw,64px);line-height:.92;letter-spacing:-.04em;color:var(--pop2)}
+  #boot p{margin:16px 0 24px;font-size:14px;font-weight:700;line-height:1.7}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- 起動 -->
+  <div id="boot">
+    <div class="in">
+      <h1>ポンポン<br>リズム</h1>
+      <p>お手本を聞いて、同じリズムで打ちかえす。<br>10コース、クリアするたびに次が開きます。</p>
+      <button class="btn primary" id="bootBtn">音を出してはじめる</button>
+    </div>
+  </div>
+
+  <!-- コース選択 -->
+  <section class="screen" id="select">
+    <div class="wrap">
+      <header class="masthead">
+        <h1>ポンポンリズム</h1>
+        <p>お手本のリズムを聞いて、そのまま打ちかえすだけ。目で追わず、耳で合わせるほど気持ちよく決まります。</p>
+      </header>
+
+      <div class="toolbar">
+        <span style="color:var(--paper);font-size:13px" id="progressLabel"></span>
+        <span style="flex:1"></span>
+        <button class="btn ghost" id="resetBtn">進行状況を消す</button>
+      </div>
+
+      <div class="grid" id="grid"></div>
+
+      <div class="settings">
+        <h2>タイミング調整</h2>
+        <p class="hint">「ちゃんと合わせているのに早い／遅いと出る」ときはここを動かします。数値を上げると判定が遅め寄りになります。</p>
+        <div class="row">
+          <input type="range" id="offset" min="-150" max="150" step="5" value="0">
+          <span class="val" id="offsetVal">0 ms</span>
+          <button class="btn" id="offsetReset">0 に戻す</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- プレイ -->
+  <section class="screen" id="game">
+    <div class="stage">
+      <div id="cvWrap"><canvas id="cv"></canvas></div>
+      <div id="hud">
+        <button class="quit" id="quitBtn">やめる</button>
+        <div id="bar"><div id="barFill"></div></div>
+        <div id="combo">0</div>
+      </div>
+      <div id="pads">
+        <button class="pad" id="padL">下</button>
+        <button class="pad" id="padR">上</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 結果 -->
+  <section class="screen" id="result">
+    <div class="panel">
+      <h3 id="rTitle"></h3>
+      <div class="stamp" id="rStamp"></div>
+      <div class="pct"><span id="rPct">0</span>%</div>
+      <div class="brk">
+        <div>ジャスト<b id="rJust">0</b></div>
+        <div>ナイス<b id="rNice">0</b></div>
+        <div>ミス<b id="rMiss">0</b></div>
+      </div>
+      <p class="msg" id="rMsg"></p>
+      <div class="acts">
+        <button class="btn" id="rRetry">もう一度</button>
+        <button class="btn primary" id="rNext">次のコースへ</button>
+        <button class="btn" id="rBack">コース一覧</button>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+"use strict";
+/* =========================================================================
+   ポンポンリズム
+   - 音は全てWeb Audio APIで合成（外部音源ファイルなし＝完全オリジナル）
+   - 判定はAudioContextのクロック基準。描画はrAFで同じ時計を読む
+   ========================================================================= */
+
+/* ---------------------------------------------------------------- 保存 */
+const SAVE_KEY = "pompon-rhythm-v1";
+let save = { cleared: 0, best: {}, offset: 0 };
+function loadSave(){
+  try{
+    const raw = localStorage.getItem(SAVE_KEY);
+    if(raw) save = Object.assign(save, JSON.parse(raw));
+  }catch(e){ /* プレビュー環境などストレージ不可 → メモリ保持で続行 */ }
+}
+function writeSave(){
+  try{ localStorage.setItem(SAVE_KEY, JSON.stringify(save)); }catch(e){}
+}
+loadSave();
+
+/* ---------------------------------------------------------------- 音 */
+const AE = {
+  ctx:null, master:null, noise:null,
+  init(){
+    if(this.ctx) return;
+    const C = window.AudioContext || window.webkitAudioContext;
+    this.ctx = new C();
+    const comp = this.ctx.createDynamicsCompressor();
+    comp.threshold.value = -12; comp.ratio.value = 4; comp.attack.value = .003; comp.release.value = .2;
+    this.master = this.ctx.createGain();
+    this.master.gain.value = .85;
+    this.master.connect(comp); comp.connect(this.ctx.destination);
+
+    // ノイズ源（スネア/ハイハット/クラップ用）
+    const n = this.ctx.sampleRate * 2;
+    const buf = this.ctx.createBuffer(1, n, this.ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for(let i=0;i<n;i++) d[i] = Math.random()*2-1;
+    this.noise = buf;
+  },
+  resume(){ if(this.ctx && this.ctx.state === "suspended") this.ctx.resume(); },
+  now(){ return this.ctx.currentTime; },
+
+  env(node, t, a, d, peak){
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(peak, t + a);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + a + d);
+    node.connect(g);
+    return g;
+  },
+  noiseSrc(t, dur){
+    const s = this.ctx.createBufferSource();
+    s.buffer = this.noise;
+    s.loop = true;
+    s.playbackRate.value = .8 + Math.random()*.4;
+    s.start(t); s.stop(t + dur + .05);
+    return s;
+  },
+
+  kick(t, gain=1){
+    const o = this.ctx.createOscillator();
+    o.type = "sine";
+    o.frequency.setValueAtTime(160, t);
+    o.frequency.exponentialRampToValueAtTime(44, t + .11);
+    const g = this.env(o, t, .004, .24, .9*gain);
+    g.connect(this.master);
+    o.start(t); o.stop(t + .32);
+    // クリック成分
+    const c = this.ctx.createOscillator();
+    c.type = "triangle"; c.frequency.setValueAtTime(900, t);
+    const cg = this.env(c, t, .001, .018, .25*gain);
+    cg.connect(this.master); c.start(t); c.stop(t + .04);
+  },
+  snare(t, gain=1){
+    const s = this.noiseSrc(t, .18);
+    const bp = this.ctx.createBiquadFilter();
+    bp.type = "bandpass"; bp.frequency.value = 1900; bp.Q.value = .8;
+    s.connect(bp);
+    const g = this.env(bp, t, .003, .15, .45*gain);
+    g.connect(this.master);
+    const o = this.ctx.createOscillator();
+    o.type = "triangle"; o.frequency.setValueAtTime(230, t);
+    o.frequency.exponentialRampToValueAtTime(150, t+.09);
+    const og = this.env(o, t, .002, .09, .22*gain);
+    og.connect(this.master); o.start(t); o.stop(t+.14);
+  },
+  hat(t, open=false, gain=1){
+    const dur = open ? .16 : .04;
+    const s = this.noiseSrc(t, dur);
+    const hp = this.ctx.createBiquadFilter();
+    hp.type = "highpass"; hp.frequency.value = 7200;
+    s.connect(hp);
+    const g = this.env(hp, t, .002, dur, .16*gain);
+    g.connect(this.master);
+  },
+  clap(t, gain=1){
+    for(let i=0;i<3;i++){
+      const tt = t + i*.014;
+      const s = this.noiseSrc(tt, .05);
+      const bp = this.ctx.createBiquadFilter();
+      bp.type = "bandpass"; bp.frequency.value = 1400; bp.Q.value = 1.4;
+      s.connect(bp);
+      const g = this.env(bp, tt, .002, .05, (i===2?.35:.2)*gain);
+      g.connect(this.master);
+    }
+  },
+  tone(t, freq, dur, type="square", gain=.3, detune=0){
+    const o = this.ctx.createOscillator();
+    o.type = type; o.frequency.setValueAtTime(freq, t); o.detune.value = detune;
+    const lp = this.ctx.createBiquadFilter();
+    lp.type = "lowpass"; lp.frequency.setValueAtTime(Math.min(freq*7+900, 12000), t);
+    o.connect(lp);
+    const g = this.env(lp, t, .006, dur, gain);
+    g.connect(this.master);
+    o.start(t); o.stop(t + dur + .08);
+  },
+  bass(t, freq, dur, gain=.34){
+    const o = this.ctx.createOscillator();
+    o.type = "triangle"; o.frequency.setValueAtTime(freq, t);
+    const lp = this.ctx.createBiquadFilter();
+    lp.type = "lowpass"; lp.frequency.setValueAtTime(freq*4+180, t);
+    lp.frequency.exponentialRampToValueAtTime(freq*2+90, t+dur);
+    o.connect(lp);
+    const g = this.env(lp, t, .008, dur, gain);
+    g.connect(this.master);
+    o.start(t); o.stop(t+dur+.08);
+  },
+  pad(t, freqs, dur, gain=.1){
+    freqs.forEach((f,i)=> this.tone(t, f, dur, "sawtooth", gain, i*6-6));
+  },
+  // お手本のコール音
+  call(t, freq, voiceType="square"){
+    this.tone(t, freq, .19, voiceType, .3);
+    this.tone(t, freq*2, .09, "sine", .12);
+  },
+  // プレイヤーが打った音
+  pon(t, freq){
+    this.tone(t, freq, .16, "triangle", .34);
+    const s = this.noiseSrc(t, .03);
+    const hp = this.ctx.createBiquadFilter();
+    hp.type="highpass"; hp.frequency.value = 3500;
+    s.connect(hp);
+    const g = this.env(hp, t, .001, .03, .12);
+    g.connect(this.master);
+  },
+  whiff(t){
+    const o = this.ctx.createOscillator();
+    o.type = "sawtooth";
+    o.frequency.setValueAtTime(180, t);
+    o.frequency.exponentialRampToValueAtTime(70, t+.16);
+    const lp = this.ctx.createBiquadFilter();
+    lp.type="lowpass"; lp.frequency.value=800;
+    o.connect(lp);
+    const g = this.env(lp, t, .004, .17, .22);
+    g.connect(this.master);
+    o.start(t); o.stop(t+.25);
+  },
+  fanfare(t, good){
+    const base = good ? 523.25 : 349.23;
+    const seq = good ? [0,4,7,12] : [0,-2,-4,-7];
+    seq.forEach((s,i)=>{
+      this.tone(t + i*.12, base*Math.pow(2,s/12), .3, "square", .26);
+    });
+  }
+};
+
+/* ---------------------------------------------------------------- コース定義 */
+// phrases: [ 拍オフセット配列, レーン配列(2レーン時のみ) ]
+// 1フレーズ = 2小節（お手本1小節 → 打ち返し1小節）
+const T3 = 1/3;
+const COURSES = [
+  {
+    name:"ポンポンはじめ", sub:"まずは4びょうし", bpm:100, lanes:1, kind:"blob", drum:0,
+    root:261.63, prog:[0,0,5,5,-4,-4,7,7], wave:"square",
+    pal:{a:"#ff9ec4", b:"#ffd9e8", ground:"#e8578f", char:"#ff3d80", char2:"#fff6e9", note:"#ff2f6d", ink:"#4a0f2a"},
+    phrases:[
+      [[0]],[[0,2]],[[0,1,2]],[[0,2,3]],[[0,1,2,3]],
+      [[0,2]],[[1,2,3]],[[0,1,3]],[[0,1,2,3]],[[0,2,3]]
+    ]
+  },
+  {
+    name:"ぴょんぴょんウサギ", sub:"うらびょうしが入るよ", bpm:108, lanes:1, kind:"rabbit", drum:1,
+    root:293.66, prog:[0,0,-3,-3,5,5,2,2], wave:"square",
+    pal:{a:"#9be7a4", b:"#e2ffe6", ground:"#3f9d55", char:"#fff6e9", char2:"#ff7aa8", note:"#1f8a45", ink:"#0f3a1e"},
+    phrases:[
+      [[0,1.5]],[[0,1,2.5]],[[0.5,2]],[[0,1.5,3]],[[0,0.5,2]],
+      [[1,2.5,3]],[[0,1.5,2.5]],[[0,2,3.5]],[[0,0.5,1.5,3]],[[0,1.5,2.5,3.5]],[[0,1,2,3.5]]
+    ]
+  },
+  {
+    name:"カエルのコーラス", sub:"高い声と低い声", bpm:116, lanes:2, kind:"frog", drum:0,
+    root:220.00, prog:[0,0,7,7,5,5,3,3], wave:"square",
+    pal:{a:"#63c9d8", b:"#d4f6fa", ground:"#1c7f92", char:"#57c06a", char2:"#fff6e9", note:"#0d5b6b", ink:"#062c35"},
+    phrases:[
+      [[0,2],[0,1]],[[0,1,2],[0,0,1]],[[0,1.5,3],[1,0,1]],[[0,2,3],[0,1,1]],
+      [[0,1,2,3],[0,1,0,1]],[[0,0.5,2],[0,0,1]],[[1,2,3],[1,0,1]],
+      [[0,1.5,2.5],[0,1,0]],[[0,1,2,3],[1,1,0,0]],[[0,0.5,1.5,3],[0,1,0,1]],
+      [[0,2,2.5,3],[1,0,0,1]]
+    ]
+  },
+  {
+    name:"ロボット工場", sub:"こまかい刻みに注意", bpm:120, lanes:1, kind:"robot", drum:2,
+    root:196.00, prog:[0,0,0,0,3,3,5,5], wave:"sawtooth",
+    pal:{a:"#8f9bb3", b:"#dfe6f2", ground:"#4a5670", char:"#ffb020", char2:"#2b3350", note:"#2b3350", ink:"#171d33"},
+    phrases:[
+      [[0,0.75,1.5]],[[0,0.25,1,2]],[[0,1,1.75,2.5]],[[0,0.5,0.75,2]],
+      [[0,1.25,2,3]],[[0,0.25,1,2.25]],[[0,0.75,1.5,2.25,3]],[[0,1,2,2.75]],
+      [[0,0.5,1,1.5,2.5]],[[0,0.5,0.75,1.5,2.5]],[[0,1.5,2.25,3]]
+    ]
+  },
+  {
+    name:"ねこパンチ", sub:"左右をすばやく", bpm:128, lanes:2, kind:"cat", drum:1,
+    root:246.94, prog:[0,0,-2,-2,-4,-4,-5,-5], wave:"square",
+    pal:{a:"#ffb877", b:"#ffe8cf", ground:"#d1712a", char:"#3a2b26", char2:"#ffe8cf", note:"#8a3d10", ink:"#41220b"},
+    phrases:[
+      [[0,0.5,1,2],[0,0,1,1]],[[0,1,1.5,2.5],[1,0,1,0]],[[0,0.5,2,2.5],[0,1,0,1]],
+      [[0,1,2,2.5,3],[0,0,1,1,0]],[[0,0.5,1,1.5],[0,1,0,1]],[[0,1.5,2,3],[1,1,0,0]],
+      [[0,0.5,1.5,2,3],[0,1,1,0,1]],[[0,1,2,3],[1,0,1,0]],
+      [[0,0.5,1,2,2.5,3],[0,0,1,1,1,0]],[[0,0.75,1.5,2.5],[0,1,0,1]],
+      [[0,0.5,1,1.5,2,2.5],[0,1,0,1,0,1]]
+    ]
+  },
+  {
+    name:"うちゅうエレベーター", sub:"3れんぷのゆらぎ", bpm:112, lanes:1, kind:"alien", drum:3,
+    root:174.61, prog:[0,0,4,4,-1,-1,2,2], wave:"sawtooth",
+    pal:{a:"#7b6bd6", b:"#cfc7ff", ground:"#3b2d80", char:"#a6ff5e", char2:"#241a52", note:"#241a52", ink:"#150e33"},
+    phrases:[
+      [[0,T3,2*T3]],[[0,1,1+T3,2+T3]],[[0,2*T3,2]],[[0,T3,2*T3,2]],
+      [[0,1,2,2+2*T3]],[[0,2*T3,1+T3,2,2+2*T3]],[[0,1+T3,2+2*T3]],
+      [[0,2*T3,1,2]],[[0,T3,1+T3,2+T3]],[[0,1,1+T3,2+2*T3,3+T3]],[[0,2*T3,2,3]]
+    ]
+  },
+  {
+    name:"たいこリレー", sub:"かわりばんこに打つ", bpm:136, lanes:2, kind:"drum", drum:3,
+    root:261.63, prog:[0,0,5,5,7,7,5,5], wave:"square",
+    pal:{a:"#ff7a5c", b:"#ffdfd4", ground:"#b03a20", char:"#fff6e9", char2:"#b03a20", note:"#8c2a12", ink:"#4d1508"},
+    phrases:[
+      [[0,1,2,3],[0,1,0,1]],[[0,0.5,1,2],[0,1,0,1]],[[0,1,1.5,2,3],[1,0,1,0,1]],
+      [[0,0.5,1.5,2.5],[0,0,1,1]],[[0,1,2,2.5,3],[0,1,0,1,0]],
+      [[0,0.5,1,1.5,2],[0,1,0,1,0]],[[0,1.5,2,3.5],[1,0,0,1]],
+      [[0,0.5,1.5,2,3],[0,1,0,1,1]],[[0,1,2,3],[1,1,0,0]],
+      [[0,0.5,1,1.5,2,3],[0,1,0,1,0,1]],[[0,0.25,0.5,1,2,3],[0,0,1,1,0,1]],
+      [[0,1,1.5,2.5,3],[1,0,1,0,1]]
+    ]
+  },
+  {
+    name:"ゆうれいワルツ", sub:"すきまが多いほど迷う", bpm:100, lanes:1, kind:"ghost", drum:4,
+    root:207.65, prog:[0,0,-4,-4,-2,-2,-5,-5], wave:"sine",
+    pal:{a:"#4b4f7a", b:"#a7abd6", ground:"#23264a", char:"#e8f0ff", char2:"#23264a", note:"#c3ccff", ink:"#12142e"},
+    phrases:[
+      [[1.5]],[[0.5,2.5]],[[1.5,3]],[[0.5,1.5,2.5]],[[0,1.5,3.5]],
+      [[0.5,2]],[[1.5,2.5,3.5]],[[0,0.5,2.5]],[[1,2.5,3.5]],[[0.5,1.5,3]],
+      [[0,1.5,2.5,3.5]]
+    ]
+  },
+  {
+    name:"でんきウナギ", sub:"びりびり連打", bpm:150, lanes:1, kind:"eel", drum:2,
+    root:329.63, prog:[0,0,-5,-5,-7,-7,-3,-3], wave:"sawtooth",
+    pal:{a:"#ffe14d", b:"#fff8c4", ground:"#c9a300", char:"#2f2a10", char2:"#ffe14d", note:"#7a6200", ink:"#3d3200"},
+    phrases:[
+      [[0,0.5,1,1.5]],[[0,0.25,0.75,1.5]],[[0,0.5,1,1.5,2]],[[0,0.75,1.25,2]],
+      [[0,0.5,0.75,1.5,2.5]],[[0,0.25,0.5,1.5,2]],[[0,1,1.5,2,2.5]],
+      [[0,0.5,1,2,2.5,3]],[[0,0.25,1,1.75,2.5]],[[0,0.5,1,1.5,2,2.5,3]],
+      [[0,0.75,1.5,2.25,3]],[[0,0.5,0.75,1,2,3]]
+    ]
+  },
+  {
+    name:"スターフィナーレ", sub:"ぜんぶ入り", bpm:144, lanes:2, kind:"star", drum:2,
+    root:277.18, prog:[0,0,5,5,-4,-4,7,7], wave:"square",
+    pal:{a:"#b06bff", b:"#f0dbff", ground:"#5c1f9e", char:"#ffd83d", char2:"#3d0f6b", note:"#3d0f6b", ink:"#26064a"},
+    phrases:[
+      [[0,2],[0,1]],[[0,1,2,3],[0,1,0,1]],[[0,0.5,1.5,2.5],[0,0,1,1]],
+      [[0,1.5,2,3],[1,0,1,0]],[[0,0.5,1,1.5,2],[0,1,0,1,0]],
+      [[0,0.75,1.5,2.25],[0,1,0,1]],[[0,1,1.5,2.5,3],[1,1,0,0,1]],
+      [[0,0.5,1,2,3],[0,1,1,0,0]],[[0,0.25,0.5,1.5,2.5],[0,0,1,1,0]],
+      [[0,1,2,2.5,3,3.5],[1,0,1,0,1,0]],[[0,0.5,1,1.5,2,2.5,3],[0,1,0,1,0,1,0]],
+      [[0,0.75,1.25,2,3],[1,0,1,0,1]],[[0,0.5,1,1.5,2,3],[0,0,1,1,0,1]],
+      [[0,1,1.5,2,2.5,3,3.5],[0,1,0,1,0,1,0]]
+    ]
+  }
+];
+
+/* ---------------------------------------------------------------- 譜面組み立て */
+// 判定窓（秒）
+const JUST = 0.052, NICE = 0.108, LATE_MISS = 0.14;
+function buildChart(course){
+  const spb = 60 / course.bpm;
+  const calls = [], hits = [];
+  course.phrases.forEach((p, pi) => {
+    const bar = 4 + pi * 2;
+    const offs = p[0];
+    const lanes = p[1] || offs.map(() => 0);
+    offs.forEach((o, k) => {
+      calls.push({ beat: bar*4 + o, lane: lanes[k], step: k, of: offs.length });
+      hits.push({
+        beat: (bar+1)*4 + o, lane: lanes[k], step: k, of: offs.length,
+        done:false, result:null, phrase:pi
+      });
+    });
+  });
+  // 隣り合う音符が判定窓より近いと取り合いになるので、間隔に応じて窓を狭める
+  const byLane = {};
+  hits.forEach(h => (byLane[h.lane] = byLane[h.lane] || []).push(h));
+  Object.values(byLane).forEach(list => {
+    list.sort((x, y) => x.beat - y.beat);
+    list.forEach((h, i) => {
+      let gap = Infinity;
+      if(i > 0) gap = Math.min(gap, (h.beat - list[i-1].beat) * spb);
+      if(i < list.length - 1) gap = Math.min(gap, (list[i+1].beat - h.beat) * spb);
+      const half = gap / 2;
+      h.wJust = Math.min(JUST, half);
+      h.wNice = Math.min(NICE, half);
+      h.wMiss = Math.max(h.wNice, Math.min(LATE_MISS, gap * 0.6));
+    });
+  });
+
+  const totalBars = 4 + course.phrases.length * 2 + 2;
+  return { calls, hits, totalBars, spb, totalBeats: totalBars * 4 };
+}
+
+// 音階（メジャーペンタトニック寄り）
+const SCALE = [0, 2, 4, 7, 9, 12, 14, 16];
+function callFreq(course, note){
+  const deg = SCALE[note.step % SCALE.length];
+  const laneShift = note.lane === 1 ? 12 : 0;
+  return course.root * Math.pow(2, (deg + laneShift) / 12);
+}
+
+/* ---------------------------------------------------------------- 伴奏 */
+function scheduleBar(course, bar, t0, spb){
+  const st = course.drum;
+  const b = i => t0 + i * spb;
+  const semi = course.prog[Math.floor(bar/1) % course.prog.length];
+  const rootHz = course.root * Math.pow(2, semi/12) / 4;
+
+  if(st === 0){                       // ベーシック 8ビート
+    AE.kick(b(0)); AE.kick(b(2));
+    AE.snare(b(1)); AE.snare(b(3));
+    for(let i=0;i<8;i++) AE.hat(b(i*.5), i===7);
+    AE.bass(b(0), rootHz, .38); AE.bass(b(1.5), rootHz, .22);
+    AE.bass(b(2), rootHz*1.5, .3); AE.bass(b(3), rootHz, .28);
+  }else if(st === 1){                 // はねたポップ
+    AE.kick(b(0)); AE.kick(b(1.5)); AE.kick(b(2.5));
+    AE.snare(b(1)); AE.snare(b(3));
+    for(let i=0;i<4;i++){ AE.hat(b(i)); AE.hat(b(i+.66), i===3); }
+    AE.bass(b(0), rootHz, .3); AE.bass(b(1), rootHz*1.5, .2);
+    AE.bass(b(2), rootHz, .3); AE.bass(b(3.5), rootHz*1.25, .18);
+  }else if(st === 2){                 // 四つ打ち
+    for(let i=0;i<4;i++) AE.kick(b(i), .95);
+    AE.clap(b(1)); AE.clap(b(3));
+    for(let i=0;i<4;i++) AE.hat(b(i+.5), true, .8);
+    for(let i=0;i<4;i++) AE.bass(b(i+.5), rootHz, .2, .3);
+  }else if(st === 3){                 // マーチ
+    AE.kick(b(0)); AE.kick(b(2)); AE.kick(b(3.5), .7);
+    AE.snare(b(1)); AE.snare(b(3)); AE.snare(b(3.5), .5);
+    for(let i=0;i<4;i++) AE.hat(b(i));
+    AE.bass(b(0), rootHz, .45); AE.bass(b(2), rootHz*1.5, .45);
+  }else{                              // まばら
+    AE.kick(b(0));
+    AE.snare(b(2));
+    AE.hat(b(1.5), true, .7); AE.hat(b(3.5), true, .7);
+    AE.bass(b(0), rootHz, .7, .28);
+    AE.bass(b(2.5), rootHz*1.5, .35, .22);
+  }
+  // 2小節ごとのパッド
+  if(bar % 2 === 0){
+    const r = rootHz * 4;
+    AE.pad(b(0), [r, r*Math.pow(2,3/12), r*Math.pow(2,7/12)], spb*3.2, .07);
+  }
+}
+
+/* ---------------------------------------------------------------- ゲーム状態 */
+const cv = document.getElementById("cv");
+const g2 = cv.getContext("2d");
+let CW = 1000, CH = 420;
+
+let G = null;          // 進行中のゲーム
+let rafId = 0, schedTimer = 0;
+
+const TRAVEL_BEATS = 2;
+
+function laneY(lanes, lane){
+  if(lanes === 1) return 250;
+  return lane === 1 ? 178 : 292;
+}
+const CALLER_X = 165, TARGET_X = 770, PLAYER_X = 880;
+
+let lastPlayed = 0;
+function startCourse(index){
+  lastPlayed = index;
+  AE.init(); AE.resume();
+  const course = COURSES[index];
+  const chart = buildChart(course);
+  const start = AE.now() + 0.9;
+
+  G = {
+    index, course, chart, start,
+    events: [], evPtr: 0,
+    notes: chart.hits.map(h => Object.assign({}, h)),
+    calls: chart.calls.map(c => Object.assign({}, c)),
+    counts: { just:0, nice:0, miss:0 },
+    combo: 0, bestCombo: 0,
+    pops: [], callerPulse: -9, playerPulse: -9, playerLane: 0,
+    shake: 0, finished: false, ended: false
+  };
+
+  // 全イベントを先に作る（伴奏 + お手本）
+  const ev = [];
+  for(let bar = 0; bar < chart.totalBars; bar++){
+    const t = start + bar * 4 * chart.spb;
+    ev.push({ t, run: (tt) => scheduleBar(course, bar, tt, chart.spb) });
+  }
+  G.calls.forEach(c => {
+    const t = start + c.beat * chart.spb;
+    ev.push({ t, run: (tt) => { AE.call(tt, callFreq(course, c), course.wave); }, mark:"call" });
+  });
+  ev.sort((a,b) => a.t - b.t);
+  G.events = ev;
+
+  document.body.classList.toggle("nopad", false);
+  document.getElementById("padL").textContent = course.lanes === 1 ? "ここをタップ / スペース" : "下（F / ←）";
+  document.getElementById("padR").style.display = course.lanes === 1 ? "none" : "flex";
+  document.getElementById("padR").textContent = "上（J / →）";
+
+  show("game");
+  resize();
+  scheduler();
+  schedTimer = setInterval(scheduler, 25);
+  if(!rafId) rafId = requestAnimationFrame(frame);
+}
+
+function scheduler(){
+  if(!G) return;
+  const ahead = AE.now() + 0.12;
+  while(G.evPtr < G.events.length && G.events[G.evPtr].t < ahead){
+    const e = G.events[G.evPtr++];
+    try{ e.run(e.t); }catch(err){}
+    if(e.mark === "call") G.pendingCall = e.t;
+  }
+}
+
+function stopGame(){
+  clearInterval(schedTimer); schedTimer = 0;
+  G = null;
+}
+
+/* ---------------------------------------------------------------- 入力・判定 */
+function press(lane){
+  if(!G || G.ended) return;
+  AE.resume();
+  const t = AE.now() + save.offset / 1000;
+  const spb = G.chart.spb;
+
+  let best = null, bestD = 1e9;
+  for(const n of G.notes){
+    if(n.done || n.lane !== lane) continue;
+    const nt = G.start + n.beat * spb;
+    const d = Math.abs(t - nt);
+    if(d < bestD){ bestD = d; best = n; }
+  }
+
+  G.playerPulse = AE.now();
+  G.playerLane = lane;
+
+  if(best && bestD <= best.wNice){
+    best.done = true;
+    best.result = bestD <= best.wJust ? "just" : "nice";
+    G.counts[best.result]++;
+    G.combo++;
+    G.bestCombo = Math.max(G.bestCombo, G.combo);
+    AE.pon(AE.now(), callFreq(G.course, best));
+    addPop(best.result === "just" ? "ジャスト!" : "ナイス", best.lane, best.result);
+  }else{
+    // 空打ち：コンボだけ切る（減点はしない）
+    G.combo = 0;
+    AE.whiff(AE.now());
+    G.shake = 6;
+  }
+  flashPad(lane);
+}
+
+function addPop(text, lane, kind){
+  G.pops.push({ text, lane, kind, t: AE.now() });
+}
+function flashPad(lane){
+  const el = document.getElementById(lane === 1 ? "padR" : "padL");
+  if(!el) return;
+  el.classList.add("flash");
+  setTimeout(() => el.classList.remove("flash"), 90);
+}
+
+/* ---------------------------------------------------------------- 描画 */
+function resize(){
+  const wrap = document.getElementById("cvWrap");
+  const w = wrap.clientWidth, h = wrap.clientHeight;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = Math.round(w * dpr);
+  cv.height = Math.round(h * dpr);
+  // 論理座標 1000x420 をフィットさせる
+  const scale = Math.min(w / CW, h / CH);
+  g2.setTransform(dpr, 0, 0, dpr, 0, 0);
+  G && (G.view = { scale, ox: (w - CW*scale)/2, oy: (h - CH*scale)/2, w, h });
+}
+window.addEventListener("resize", resize);
+
+function rr(c, x, y, w, h, r){
+  r = Math.min(r, w/2, h/2);
+  c.beginPath();
+  c.moveTo(x+r, y);
+  c.arcTo(x+w, y, x+w, y+h, r);
+  c.arcTo(x+w, y+h, x, y+h, r);
+  c.arcTo(x, y+h, x, y, r);
+  c.arcTo(x, y, x+w, y, r);
+  c.closePath();
+}
+
+function drawCharacter(c, x, y, s, kind, pal, bounce, blink){
+  c.save();
+  c.translate(x, y - bounce * 16);
+  c.lineWidth = 4; c.strokeStyle = pal.ink;
+
+  const bw = 74*s, bh = 68*s;
+  // 影
+  c.fillStyle = "rgba(0,0,0,.18)";
+  c.beginPath();
+  c.ellipse(0, bh/2 + 14 + bounce*16, bw*0.5, 9*s, 0, 0, Math.PI*2);
+  c.fill();
+
+  // 付属パーツ（体より後ろ）
+  c.fillStyle = pal.char;
+  if(kind === "rabbit"){
+    for(const sx of [-1, 1]){
+      rr(c, sx*16*s - 9*s, -bh/2 - 44*s, 18*s, 50*s, 9*s);
+      c.fill(); c.stroke();
+    }
+  }else if(kind === "cat"){
+    for(const sx of [-1, 1]){
+      c.beginPath();
+      c.moveTo(sx*14*s, -bh/2 + 6*s);
+      c.lineTo(sx*32*s, -bh/2 - 26*s);
+      c.lineTo(sx*38*s, -bh/2 + 6*s);
+      c.closePath(); c.fill(); c.stroke();
+    }
+  }else if(kind === "alien" || kind === "robot"){
+    c.strokeStyle = pal.ink; c.lineWidth = 5;
+    c.beginPath(); c.moveTo(0, -bh/2); c.lineTo(0, -bh/2 - 30*s); c.stroke();
+    c.beginPath(); c.arc(0, -bh/2 - 36*s, 9*s, 0, Math.PI*2);
+    c.fillStyle = pal.char2; c.fill(); c.lineWidth = 4; c.stroke();
+  }else if(kind === "frog"){
+    for(const sx of [-1, 1]){
+      c.beginPath(); c.arc(sx*24*s, -bh/2 - 4*s, 17*s, 0, Math.PI*2);
+      c.fillStyle = pal.char; c.fill(); c.stroke();
+    }
+  }else if(kind === "star"){
+    c.fillStyle = pal.char;
+    c.beginPath();
+    for(let i=0;i<10;i++){
+      const a = -Math.PI/2 + i*Math.PI/5;
+      const r = (i%2 ? 30 : 62) * s;
+      c[i ? "lineTo" : "moveTo"](Math.cos(a)*r, Math.sin(a)*r);
+    }
+    c.closePath(); c.fill(); c.stroke();
+  }
+
+  // 体
+  c.fillStyle = pal.char;
+  if(kind === "ghost"){
+    c.beginPath();
+    c.moveTo(-bw/2, bh/2 - 4*s);
+    c.lineTo(-bw/2, -6*s);
+    c.arc(0, -6*s, bw/2, Math.PI, 0);
+    c.lineTo(bw/2, bh/2 - 4*s);
+    for(let i=0;i<4;i++){
+      const x0 = bw/2 - i*(bw/4);
+      c.quadraticCurveTo(x0 - bw/8, bh/2 + 12*s, x0 - bw/4, bh/2 - 4*s);
+    }
+    c.closePath(); c.fill(); c.stroke();
+  }else if(kind === "robot"){
+    rr(c, -bw/2, -bh/2, bw, bh, 10*s); c.fill(); c.stroke();
+  }else if(kind === "eel"){
+    rr(c, -bw/2 - 12*s, -bh/2 + 10*s, bw + 24*s, bh - 20*s, (bh-20*s)/2);
+    c.fill(); c.stroke();
+  }else if(kind === "star"){
+    // 本体は上で描いた
+  }else{
+    c.beginPath();
+    c.ellipse(0, 0, bw/2, bh/2, 0, 0, Math.PI*2);
+    c.fill(); c.stroke();
+  }
+
+  // 顔
+  const eyeY = -6*s, eyeX = 15*s;
+  c.fillStyle = pal.ink;
+  if(blink){
+    c.lineWidth = 4; c.strokeStyle = pal.ink;
+    for(const sx of [-1,1]){
+      c.beginPath(); c.moveTo(sx*eyeX - 7*s, eyeY); c.lineTo(sx*eyeX + 7*s, eyeY); c.stroke();
+    }
+  }else{
+    for(const sx of [-1,1]){
+      c.beginPath(); c.ellipse(sx*eyeX, eyeY, 5.5*s, 7*s, 0, 0, Math.PI*2); c.fill();
+    }
+  }
+  // 口
+  c.lineWidth = 4; c.strokeStyle = pal.ink;
+  c.beginPath();
+  if(bounce > .3){
+    c.ellipse(0, 15*s, 10*s, 9*s, 0, 0, Math.PI*2);
+    c.fillStyle = pal.ink; c.fill();
+  }else{
+    c.arc(0, 8*s, 11*s, .25*Math.PI, .75*Math.PI);
+    c.stroke();
+  }
+  c.restore();
+}
+
+function frame(){
+  rafId = requestAnimationFrame(frame);
+  if(!G) return;
+  if(!G.view) resize();
+
+  const now = AE.now();
+  const spb = G.chart.spb;
+  const beat = (now - G.start) / spb;
+  const course = G.course, pal = course.pal;
+
+  // ---- ミス判定（通り過ぎた） ----
+  for(const n of G.notes){
+    if(n.done) continue;
+    const nt = G.start + n.beat * spb;
+    if(now - nt > n.wMiss){
+      n.done = true; n.result = "miss";
+      G.counts.miss++; G.combo = 0;
+      addPop("ミス", n.lane, "miss");
+    }
+  }
+
+  // ---- 終了 ----
+  if(!G.ended && beat >= G.chart.totalBeats - 1){
+    G.ended = true;
+    finish();
+  }
+
+  const v = G.view;
+  const c = g2;
+  c.save();
+  c.clearRect(0, 0, v.w, v.h);
+  c.translate(v.ox, v.oy);
+  c.scale(v.scale, v.scale);
+  if(G.shake > 0){
+    c.translate((Math.random()-.5)*G.shake, (Math.random()-.5)*G.shake);
+    G.shake *= .82; if(G.shake < .3) G.shake = 0;
+  }
+
+  // ---- 背景 ----
+  const grad = c.createLinearGradient(0, 0, 0, CH);
+  grad.addColorStop(0, pal.b); grad.addColorStop(1, pal.a);
+  c.fillStyle = grad; c.fillRect(-200, -200, CW+400, CH+400);
+
+  // 拍に合わせて流れるストライプ
+  const phase = ((beat % 2) / 2) * 120;
+  c.save();
+  c.globalAlpha = .13; c.fillStyle = pal.ground;
+  for(let x = -240; x < CW + 240; x += 120){
+    c.beginPath();
+    c.moveTo(x - phase + 60, 0); c.lineTo(x - phase + 120, 0);
+    c.lineTo(x - phase + 60, CH); c.lineTo(x - phase, CH);
+    c.closePath(); c.fill();
+  }
+  c.restore();
+
+  // 地面
+  c.fillStyle = pal.ground;
+  c.fillRect(0, CH - 62, CW, 62);
+  c.globalAlpha = .25; c.fillStyle = "#000";
+  c.fillRect(0, CH - 62, CW, 6);
+  c.globalAlpha = 1;
+
+  // ---- レーン ----
+  const lanes = course.lanes;
+  for(let l = 0; l < lanes; l++){
+    const y = laneY(lanes, lanes === 1 ? 0 : l);
+    c.strokeStyle = "rgba(0,0,0,.14)"; c.lineWidth = 3;
+    c.setLineDash([10, 12]);
+    c.beginPath(); c.moveTo(CALLER_X, y); c.lineTo(TARGET_X, y); c.stroke();
+    c.setLineDash([]);
+    // ターゲット
+    c.fillStyle = pal.note;
+    c.globalAlpha = .18;
+    c.beginPath(); c.arc(TARGET_X, y, 34, 0, Math.PI*2); c.fill();
+    c.globalAlpha = 1;
+    c.strokeStyle = pal.ink; c.lineWidth = 5;
+    c.beginPath(); c.arc(TARGET_X, y, 30, 0, Math.PI*2); c.stroke();
+  }
+
+  // ---- お手本キャラ ----
+  let callerBounce = 0;
+  for(const cl of G.calls){
+    const ct = G.start + cl.beat * spb;
+    const d = now - ct;
+    if(d >= 0 && d < .3) callerBounce = Math.max(callerBounce, 1 - d/.3);
+  }
+  // 拍で軽く揺れる
+  const idleBounce = Math.max(0, Math.sin(beat * Math.PI)) * .22;
+  drawCharacter(c, CALLER_X, laneY(lanes, 0) + (lanes === 2 ? 55 : 0),
+    1.05, course.kind, pal, Math.max(callerBounce, idleBounce),
+    Math.floor(beat/4) % 7 === 3);
+
+  // ---- 音符 ----
+  for(const n of G.notes){
+    if(n.done) continue;
+    const nt = G.start + n.beat * spb;
+    const p = 1 - (nt - now) / (TRAVEL_BEATS * spb);
+    if(p < -0.05 || p > 1.5) continue;
+    const y0 = laneY(lanes, 0) + (lanes === 2 ? 55 : 0);
+    const y1 = laneY(lanes, n.lane);
+    const x = CALLER_X + (TARGET_X - CALLER_X) * p;
+    const y = y0 + (y1 - y0) * Math.min(1, Math.max(0, p)) - Math.sin(Math.min(1,Math.max(0,p)) * Math.PI) * 46;
+    const r = 17 + (p > .92 && p < 1.08 ? 4 : 0);
+    c.fillStyle = n.lane === 1 ? pal.char : pal.note;
+    c.strokeStyle = pal.ink; c.lineWidth = 4;
+    c.beginPath(); c.arc(x, y, r, 0, Math.PI*2); c.fill(); c.stroke();
+    c.fillStyle = "rgba(255,255,255,.55)";
+    c.beginPath(); c.arc(x - 5, y - 6, 5, 0, Math.PI*2); c.fill();
+  }
+
+  // ---- プレイヤーキャラ ----
+  const pd = now - G.playerPulse;
+  const pb = pd >= 0 && pd < .26 ? 1 - pd/.26 : 0;
+  drawCharacter(c, PLAYER_X, laneY(lanes, lanes === 2 ? G.playerLane : 0) + (lanes === 2 ? 40 : 0),
+    1.15, course.kind, { ...pal, char: pal.char2, ink: pal.ink }, pb, false);
+
+  // ---- ポップ ----
+  c.textAlign = "center";
+  G.pops = G.pops.filter(p => now - p.t < .7);
+  for(const p of G.pops){
+    const a = now - p.t, k = a / .7;
+    c.save();
+    c.globalAlpha = 1 - k*k;
+    c.translate(TARGET_X, laneY(lanes, p.lane) - 52 - k*34);
+    c.font = "800 30px 'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif";
+    c.lineWidth = 7; c.strokeStyle = pal.ink;
+    c.strokeText(p.text, 0, 0);
+    c.fillStyle = p.kind === "just" ? "#fff44d" : p.kind === "nice" ? "#ffffff" : "#ff6b6b";
+    c.fillText(p.text, 0, 0);
+    c.restore();
+  }
+
+  // ---- カウントイン / フレーズ表示 ----
+  c.font = "800 44px 'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif";
+  c.textAlign = "center";
+  if(beat < 4){
+    const n = Math.floor(beat) + 1;
+    if(n >= 1 && n <= 4){
+      const f = 1 - (beat % 1);
+      c.save(); c.globalAlpha = .35 + f*.5;
+      c.lineWidth = 9; c.strokeStyle = pal.ink; c.fillStyle = "#fff";
+      const label = n < 4 ? String(n) : "GO!";
+      c.strokeText(label, CW/2, 120); c.fillText(label, CW/2, 120);
+      c.restore();
+    }
+  }else{
+    // お手本 / きみのばん
+    const isCall = ((Math.floor(beat/4) - 4) % 2) === 0;
+    if(beat >= 16 && beat < G.chart.totalBeats - 8){
+      c.save();
+      c.globalAlpha = .55;
+      c.font = "800 20px 'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif";
+      c.fillStyle = pal.ink;
+      c.fillText(isCall ? "おてほん" : "きみのばん", CW/2, 44);
+      c.restore();
+    }
+  }
+
+  c.restore();
+
+  // ---- HUD ----
+  const totalNotes = G.notes.length;
+  const done = G.counts.just + G.counts.nice + G.counts.miss;
+  document.getElementById("barFill").style.width =
+    Math.max(0, Math.min(100, (beat / G.chart.totalBeats) * 100)) + "%";
+  document.getElementById("combo").textContent = G.combo > 1 ? G.combo + " れんぞく" : "";
+}
+
+/* ---------------------------------------------------------------- 結果 */
+function finish(){
+  const stats = G.counts, index = G.index;
+  const total = G.notes.length;
+  const pts = stats.just * 2 + stats.nice * 1;
+  const pct = Math.round((pts / (total * 2)) * 100);
+
+  setTimeout(() => {
+    const good = pct >= 70;
+    AE.fanfare(AE.now() + .05, good);
+    stopGame();
+
+    let rank, msg;
+    if(pct === 100){ rank = "パーフェクト"; msg = "全部ジャスト。文句なしです。"; }
+    else if(pct >= 90){ rank = "ハイレベル"; msg = "ほぼ完璧。あと少しで全ジャストです。"; }
+    else if(pct >= 70){ rank = "クリア"; msg = "合格です。次のコースが開きました。"; }
+    else { rank = "もういちど"; msg = "70%でクリアです。音符を目で追わず、お手本の音を口ずさむと合いやすくなります。"; }
+
+    const prev = save.best[index];
+    if(prev == null || pct > prev){ save.best[index] = pct; }
+    if(good && save.cleared === index){ save.cleared = index + 1; }
+    writeSave();
+
+    document.getElementById("rTitle").textContent = COURSES[index].name;
+    const st = document.getElementById("rStamp");
+    st.textContent = rank;
+    st.classList.toggle("miss", !good);
+    document.getElementById("rPct").textContent = pct;
+    document.getElementById("rJust").textContent = stats.just;
+    document.getElementById("rNice").textContent = stats.nice;
+    document.getElementById("rMiss").textContent = stats.miss;
+    document.getElementById("rMsg").textContent = msg;
+
+    const nextBtn = document.getElementById("rNext");
+    const hasNext = index + 1 < COURSES.length && save.cleared > index;
+    nextBtn.style.display = hasNext ? "" : "none";
+    nextBtn.dataset.next = index + 1;
+
+    show("result");
+    renderGrid();
+  }, 700);
+}
+
+/* ---------------------------------------------------------------- 画面 */
+function show(id){
+  document.querySelectorAll(".screen").forEach(s => s.classList.toggle("on", s.id === id));
+}
+
+function renderGrid(){
+  const grid = document.getElementById("grid");
+  grid.innerHTML = "";
+  COURSES.forEach((co, i) => {
+    const unlocked = i <= save.cleared;
+    const btn = document.createElement("button");
+    btn.className = "card" + (unlocked ? "" : " locked");
+    btn.disabled = !unlocked;
+    if(unlocked){
+      btn.style.background = co.pal.b;
+      btn.style.color = co.pal.ink;
+    }
+    const best = save.best[i];
+    btn.innerHTML = `
+      <div>
+        <div class="no">${String(i+1).padStart(2,"0")}</div>
+        <div class="nm">${unlocked ? co.name : "？？？"}</div>
+        <div class="sb">${unlocked ? co.sub : "前のコースをクリアすると開きます"}</div>
+      </div>
+      <div class="foot">
+        <span>${unlocked ? co.bpm + " BPM" : ""}</span>
+        ${unlocked && best != null ? `<span class="rank">${best}%</span>` : (unlocked ? "" : '<span class="lockmark">🔒</span>')}
+      </div>`;
+    btn.addEventListener("click", () => startCourse(i));
+    grid.appendChild(btn);
+  });
+  const n = Math.min(save.cleared, COURSES.length);
+  document.getElementById("progressLabel").textContent =
+    `クリア ${n} / ${COURSES.length} コース`;
+}
+
+/* ---------------------------------------------------------------- 配線 */
+document.getElementById("bootBtn").addEventListener("click", () => {
+  AE.init(); AE.resume();
+  // 無音を1発鳴らして iOS のロックを解除
+  AE.tone(AE.now(), 440, .001, "sine", .0001);
+  document.getElementById("boot").style.display = "none";
+  show("select");
+  renderGrid();
+});
+
+document.getElementById("quitBtn").addEventListener("click", () => {
+  stopGame(); show("select"); renderGrid();
+});
+document.getElementById("rRetry").addEventListener("click", () => startCourse(lastPlayed));
+document.getElementById("rBack").addEventListener("click", () => { show("select"); renderGrid(); });
+document.getElementById("rNext").addEventListener("click", (e) => {
+  startCourse(parseInt(e.currentTarget.dataset.next, 10));
+});
+
+document.getElementById("resetBtn").addEventListener("click", () => {
+  save.cleared = 0; save.best = {}; writeSave(); renderGrid();
+});
+
+const offsetEl = document.getElementById("offset");
+const offsetVal = document.getElementById("offsetVal");
+function syncOffset(){
+  offsetEl.value = save.offset;
+  offsetVal.textContent = (save.offset > 0 ? "+" : "") + save.offset + " ms";
+}
+offsetEl.addEventListener("input", () => { save.offset = +offsetEl.value; syncOffset(); writeSave(); });
+document.getElementById("offsetReset").addEventListener("click", () => { save.offset = 0; syncOffset(); writeSave(); });
+syncOffset();
+
+// キーボード
+const KEY_L = new Set(["Space"," ","KeyF","ArrowLeft","ArrowDown","KeyD"]);
+const KEY_R = new Set(["KeyJ","ArrowRight","ArrowUp","KeyK"]);
+const held = new Set();
+window.addEventListener("keydown", e => {
+  if(e.repeat) return;
+  if(e.code === "Escape" && G){ stopGame(); show("select"); renderGrid(); return; }
+  if(!G) return;
+  if(KEY_R.has(e.code) && G.course.lanes === 2){ e.preventDefault(); press(1); }
+  else if(KEY_L.has(e.code) || KEY_L.has(e.key)){ e.preventDefault(); press(0); }
+  else if(KEY_R.has(e.code)){ e.preventDefault(); press(0); }
+});
+
+// タップ／クリック
+function bindPad(el, lane){
+  const fire = e => { e.preventDefault(); press(lane); };
+  el.addEventListener("pointerdown", fire);
+}
+bindPad(document.getElementById("padL"), 0);
+bindPad(document.getElementById("padR"), 1);
+document.getElementById("cvWrap").addEventListener("pointerdown", e => {
+  if(!G) return;
+  e.preventDefault();
+  if(G.course.lanes === 1){ press(0); return; }
+  const r = e.currentTarget.getBoundingClientRect();
+  press((e.clientY - r.top) < r.height/2 ? 1 : 0);
+});
+
+show("select");
+renderGrid();
+</script>
+</body>
+</html>
