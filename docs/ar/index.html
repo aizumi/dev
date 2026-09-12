@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ARたからさがし</title>
+  <style>
+    /* ==================== リセット & 基本設定 ==================== */
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0; height: 100%;
+      overflow: hidden;
+      overscroll-behavior: none;
+    }
+    body {
+      font-family: "Hiragino Maru Gothic ProN", "BIZ UDPGothic", "Yu Gothic UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      color: #1e293b;
+      touch-action: manipulation;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+    .hidden { display: none !important; }
+
+    /* ==================== アプリ枠 ==================== */
+    .app-shell {
+      width: 100%;
+      max-width: 28rem;
+      background: #fff;
+      border-radius: 2rem;
+      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+      overflow: hidden;
+      border: 1px solid #f1f5f9;
+      display: flex;
+      flex-direction: column;
+      height: min(700px, calc(100vh - 2rem));
+      position: relative;
+    }
+
+    .screen {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      flex-grow: 1;
+      padding: 1.5rem;
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+    }
+
+    .screen.flow { display: block; }
+
+    /* ==================== リセットボタン（常時表示） ==================== */
+    .reset-btn {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      width: 2.5rem;
+      height: 2.5rem;
+      border-radius: 0.75rem;
+      background: #f1f5f9;
+      color: #475569;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      z-index: 100;
+      transition: all 0.2s;
+    }
+    .reset-btn:active { transform: scale(0.95); background: #e2e8f0; }
+
+    /* ==================== テキスト ==================== */
+    .title { font-size: 1.8rem; font-weight: 900; color: #0f172a; margin-bottom: 1rem; }
+    .subtitle { font-size: 1rem; color: #475569; margin-bottom: 1.5rem; line-height: 1.6; }
+    .big-emoji { font-size: 4rem; text-align: center; margin: 1rem 0; }
+    .message { font-size: 0.95rem; color: #475569; line-height: 1.6; margin: 1rem 0; }
+    .info-box {
+      background: #f0f9ff;
+      border-left: 4px solid #0284c7;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      margin: 1rem 0;
+      font-size: 0.9rem;
+      color: #0c4a6e;
+    }
+
+    /* ==================== ボタン ==================== */
+    .primary-btn {
+      width: 100%;
+      background: #667eea;
+      color: #fff;
+      font-weight: 800;
+      padding: 1rem 1.5rem;
+      border-radius: 1rem;
+      font-size: 1.05rem;
+      margin-top: auto;
+      transition: all 0.2s;
+    }
+    .primary-btn:active { transform: scale(0.98); background: #5568d3; }
+
+    .secondary-btn {
+      width: 100%;
+      background: #e2e8f0;
+      color: #334155;
+      font-weight: 800;
+      padding: 1rem 1.5rem;
+      border-radius: 1rem;
+      font-size: 1.05rem;
+      margin-top: 0.5rem;
+      transition: all 0.2s;
+    }
+    .secondary-btn:active { transform: scale(0.98); background: #cbd5e1; }
+
+    /* ==================== 進捗インジケータ ==================== */
+    .emoji-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.8rem;
+      margin: 1.5rem 0;
+    }
+    .emoji-item {
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 1rem;
+      font-size: 2.5rem;
+      background: #f1f5f9;
+      transition: all 0.3s;
+    }
+    .emoji-item.found {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+      transform: scale(1.1);
+    }
+    .emoji-item.next {
+      background: #fff3cd;
+      box-shadow: 0 0 0 2px #ffc107;
+    }
+    .emoji-item.locked {
+      opacity: 0.4;
+    }
+
+    /* ==================== タイマー表示 ==================== */
+    .timer-display {
+      text-align: center;
+      font-size: 3rem;
+      font-weight: 900;
+      color: #667eea;
+      margin: 2rem 0 1rem 0;
+      font-variant-numeric: tabular-nums;
+    }
+    .timer-display.warning { color: #f59e0b; }
+    .timer-display.danger { color: #ef4444; animation: pulse 0.5s infinite; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    /* ==================== 紙吹雪（アニメーション用） ==================== */
+    .confetti {
+      position: fixed;
+      width: 10px;
+      height: 10px;
+      z-index: 1000;
+      pointer-events: none;
+    }
+
+    /* ==================== カメラ映像レイアウト ==================== */
+    .camera-container {
+      position: relative;
+      width: 100%;
+      height: 300px;
+      background: #f1f5f9;
+      border-radius: 1rem;
+      overflow: hidden;
+      margin-bottom: 1rem;
+    }
+    #camera-video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .camera-fallback {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-shell">
+  <button class="reset-btn" id="resetBtn" title="さいしょからあそぶ">🔄</button>
+
+  <!-- 初回説明画面 -->
+  <div class="screen" id="introScreen">
+    <div>
+      <div class="title">ARたからさがし</div>
+      <div class="subtitle">家のなかの QRコードを さがして、たからものを さっさくしよう！</div>
+      <div class="big-emoji">🔍</div>
+      <div class="info-box">
+        <strong>あそびかた：</strong>
+        <br>① スマホの カメラで QRコードを よみこむ
+        <br>② <span id="introAnimal"></span> が でたら せいこう！
+        <br>③ つぎは <span id="introNext"></span> をさがそう
+      </div>
+    </div>
+    <button class="primary-btn" id="startBtn">あそびをはじめる</button>
+  </div>
+
+  <!-- 進捗ステータス画面 -->
+  <div class="screen flow" id="statusScreen" hidden>
+    <div>
+      <div class="title">🎯 たからさがし</div>
+      <div class="subtitle">つぎは <span id="statusNextAnimal"></span> を さがそう！</div>
+      <div class="emoji-grid" id="statusGrid"></div>
+      <div class="message" id="statusMessage" style="margin-top: 1rem; text-align: center;"></div>
+    </div>
+  </div>
+
+  <!-- ボーナス開始画面 -->
+  <div class="screen" id="bonusStartScreen" hidden>
+    <div style="text-align: center;">
+      <div class="title">🎉 ボーナスチャレンジ！</div>
+      <div class="subtitle">このどうぶつを さがしてね！</div>
+      <div class="big-emoji" id="bonusTargetEmoji"></div>
+      <div class="timer-display" id="bonusTimer">30</div>
+      <div class="message">30びょうないに みつけられるかな？</div>
+    </div>
+    <div class="info-box" style="margin-top: 1rem;">
+      スマホの カメラで <span id="bonusBonusAnimal"></span> の QRコードを よみこんでね！
+    </div>
+  </div>
+
+  <!-- 発見演出画面 -->
+  <div class="screen" id="foundScreen" hidden>
+    <div style="text-align: center; flex-grow: 1; display: flex; flex-direction: column; justify-content: center;">
+      <div class="big-emoji" id="foundEmoji"></div>
+      <div class="title" id="foundMessage">みつけたぞ！</div>
+      <div class="subtitle" style="margin-top: 1rem;">よかったね！つぎに すすもう</div>
+    </div>
+  </div>
+
+  <!-- ボーナス成功画面 -->
+  <div class="screen" id="bonusSuccessScreen" hidden>
+    <div style="text-align: center; flex-grow: 1; display: flex; flex-direction: column; justify-content: center;">
+      <div style="font-size: 5rem; margin-bottom: 1rem;">✨</div>
+      <div class="title">クリア！</div>
+      <div class="subtitle">すごいね！すべてのたからをみつけたよ！</div>
+      <div style="font-size: 3rem; margin: 1.5rem 0;">🎊🎊🎊</div>
+    </div>
+    <button class="primary-btn" id="replayBtn">もう いちど あそぶ</button>
+  </div>
+
+  <!-- ボーナス失敗画面 -->
+  <div class="screen" id="bonusFailScreen" hidden>
+    <div style="text-align: center;">
+      <div class="title">⏰ じかんきれ！</div>
+      <div class="subtitle" style="margin-top: 1rem;">10ばんめの QRコードから やりなおしてね</div>
+      <div class="big-emoji" id="failRetryEmoji">⭐</div>
+    </div>
+    <button class="secondary-btn" id="failRetryBtn">もどる</button>
+  </div>
+
+  <!-- エラー/警告画面 -->
+  <div class="screen" id="warningScreen" hidden>
+    <div>
+      <div class="title" id="warningTitle">まだ ひろいです</div>
+      <div class="subtitle" id="warningMessage"></div>
+      <div class="big-emoji" id="warningEmoji">👀</div>
+    </div>
+    <button class="secondary-btn" id="warningOkBtn">わかった</button>
+  </div>
+
+</div>
+
+<script>
+  /* ==================== 定数 ==================== */
+  const BONUS_TIME_MS = 30000; // 30秒
+  const STORAGE_KEY = 'arTreasureHunt_v1';
+
+  const ANIMALS = ['🐶', '🐱', '🐰', '🐻', '🐼', '🦁', '🐸', '🐷', '🦊'];
+  const BONUS_EMOJI = '⭐';
+
+  /* ==================== 状態管理 ==================== */
+  let state = {
+    found: [],
+    bonusActive: false,
+    bonusTarget: null,
+    bonusStartTime: null,
+    cleared: false
+  };
+
+  /* ==================== 初期化 ==================== */
+  function init() {
+    // localStorageから状態を復元
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      state = JSON.parse(saved);
+    }
+
+    // 画面初期化
+    updateUI();
+    setupEventListeners();
+  }
+
+  function setupEventListeners() {
+    document.getElementById('resetBtn').addEventListener('click', resetGame);
+    document.getElementById('startBtn').addEventListener('click', showStatus);
+    document.getElementById('replayBtn').addEventListener('click', resetGame);
+    document.getElementById('failRetryBtn').addEventListener('click', goToStatus);
+    document.getElementById('warningOkBtn').addEventListener('click', goToStatus);
+  }
+
+  /* ==================== UI更新 ==================== */
+  function updateUI() {
+    // 現在の状態に応じて画面を表示
+    const params = new URLSearchParams(location.search);
+    const code = params.get('code') ? parseInt(params.get('code')) : null;
+
+    if (code) {
+      handleQRScan(code);
+    } else {
+      // code パラメータがない場合
+      if (state.found.length === 0) {
+        showIntro();
+      } else if (state.bonusActive && !state.cleared) {
+        showBonusStart();
+      } else if (state.cleared) {
+        showBonusSuccess();
+      } else {
+        showStatus();
+      }
+    }
+  }
+
+  /* ==================== QRスキャン処理 ==================== */
+  function handleQRScan(code) {
+    if (code < 1 || code > 10) {
+      showWarning('エラー', 'QRコードが ただしくありません');
+      return;
+    }
+
+    // ボーナス中
+    if (state.bonusActive) {
+      handleBonusScan(code);
+      return;
+    }
+
+    // 通常探索中
+    if (code >= 1 && code <= 9) {
+      const nextExpected = state.found.length + 1;
+
+      if (code === nextExpected) {
+        // 正しい次のコード
+        playFoundSound();
+        state.found.push(code);
+        saveState();
+        showFoundScreen(code);
+
+        // 少し待ってからステータス画面へ
+        setTimeout(() => {
+          if (state.found.length < 9) {
+            showStatus();
+          }
+        }, 2000);
+      } else if (state.found.includes(code)) {
+        // もう見つけた
+        showWarning('もう みつけたよ', `${ANIMALS[code - 1]} は もう さっさくしましたね`);
+      } else {
+        // 順番違い
+        showWarning('まだ ひろいです', `つぎは ${ANIMALS[nextExpected - 1]} を さがしてね`);
+      }
+      return;
+    }
+
+    // code === 10 (ラスト/ボーナス起動)
+    if (code === 10) {
+      if (state.found.length < 9) {
+        showWarning('まだ ひろいです', `あと ${9 - state.found.length} こ！\nさきに 1～9の QRを\nぜんぶ みつけてね`);
+      } else if (!state.bonusActive && !state.cleared) {
+        // ボーナス開始
+        startBonus();
+      } else if (state.cleared) {
+        // 既にクリア済み
+        showBonusSuccess();
+      }
+    }
+  }
+
+  function handleBonusScan(code) {
+    if (code < 1 || code > 9) {
+      showWarning('ボーナス中です', 'つぎは ' + ANIMALS[state.bonusTarget - 1] + ' を さがしてね');
+      return;
+    }
+
+    const elapsedMs = Date.now() - state.bonusStartTime;
+    const isTimeUp = elapsedMs > BONUS_TIME_MS;
+
+    if (isTimeUp) {
+      showBonusFail();
+      return;
+    }
+
+    if (code === state.bonusTarget) {
+      // ボーナス成功
+      playSuccessSound();
+      state.cleared = true;
+      state.bonusActive = false;
+      saveState();
+      showBonusSuccess();
+    } else {
+      showWarning('ちがうよ', `つぎは ${ANIMALS[state.bonusTarget - 1]} を さがしてね`);
+    }
+  }
+
+  function startBonus() {
+    // 1～9からランダムに1つ選ぶ
+    state.bonusTarget = Math.floor(Math.random() * 9) + 1;
+    state.bonusActive = true;
+    state.bonusStartTime = Date.now();
+    saveState();
+    showBonusStart();
+  }
+
+  /* ==================== 画面表示 ==================== */
+  function hideAllScreens() {
+    document.querySelectorAll('.screen').forEach(s => s.hidden = true);
+  }
+
+  function showIntro() {
+    hideAllScreens();
+    const nextIndex = 0;
+    document.getElementById('introAnimal').textContent = ANIMALS[0];
+    document.getElementById('introNext').textContent = ANIMALS[1];
+    document.getElementById('introScreen').hidden = false;
+  }
+
+  function showStatus() {
+    hideAllScreens();
+    updateStatusGrid();
+    document.getElementById('statusScreen').hidden = false;
+  }
+
+  function updateStatusGrid() {
+    const grid = document.getElementById('statusGrid');
+    grid.innerHTML = '';
+
+    const nextIndex = state.found.length;
+
+    for (let i = 0; i < 9; i++) {
+      const div = document.createElement('div');
+      div.className = 'emoji-item';
+      div.textContent = ANIMALS[i];
+
+      if (state.found.includes(i + 1)) {
+        div.classList.add('found');
+      } else if (i === nextIndex) {
+        div.classList.add('next');
+      } else {
+        div.classList.add('locked');
+      }
+
+      grid.appendChild(div);
+    }
+
+    const nextAnimal = state.found.length < 9 ? ANIMALS[nextIndex] : BONUS_EMOJI;
+    document.getElementById('statusNextAnimal').textContent = nextAnimal;
+
+    const msg = state.found.length < 9
+      ? `${state.found.length}/9 みつけた`
+      : '9このぜんぶ みつけたね！\nさいごの ⭐ を さがそう';
+    document.getElementById('statusMessage').textContent = msg;
+  }
+
+  function showFoundScreen(code) {
+    hideAllScreens();
+    document.getElementById('foundEmoji').textContent = ANIMALS[code - 1];
+    document.getElementById('foundMessage').textContent = `${ANIMALS[code - 1]} を\nみつけたぞ！`;
+    showCameraOverlay();
+    document.getElementById('foundScreen').hidden = false;
+  }
+
+  function showBonusStart() {
+    hideAllScreens();
+    const targetEmoji = ANIMALS[state.bonusTarget - 1];
+    document.getElementById('bonusTargetEmoji').textContent = targetEmoji;
+    document.getElementById('bonusBonusAnimal').textContent = targetEmoji;
+    document.getElementById('bonusStartScreen').hidden = false;
+
+    // タイマー開始
+    updateBonusTimer();
+  }
+
+  function updateBonusTimer() {
+    const elapsed = Date.now() - state.bonusStartTime;
+    const remaining = Math.max(0, Math.ceil((BONUS_TIME_MS - elapsed) / 1000));
+    const timerEl = document.getElementById('bonusTimer');
+    timerEl.textContent = remaining;
+
+    if (remaining <= 0) {
+      showBonusFail();
+      return;
+    }
+
+    // タイマー表示のスタイル
+    timerEl.classList.remove('warning', 'danger');
+    if (remaining <= 5) {
+      timerEl.classList.add('danger');
+    } else if (remaining <= 10) {
+      timerEl.classList.add('warning');
+    }
+
+    setTimeout(updateBonusTimer, 100);
+  }
+
+  function showBonusSuccess() {
+    hideAllScreens();
+    playSuccessSound();
+    playConfetti();
+    document.getElementById('bonusSuccessScreen').hidden = false;
+  }
+
+  function showBonusFail() {
+    hideAllScreens();
+    document.getElementById('bonusFailScreen').hidden = false;
+  }
+
+  function showWarning(title, message) {
+    hideAllScreens();
+    document.getElementById('warningTitle').textContent = title;
+    document.getElementById('warningMessage').textContent = message;
+    document.getElementById('warningScreen').hidden = false;
+  }
+
+  function goToStatus() {
+    showStatus();
+  }
+
+  /* ==================== カメラ演出 ==================== */
+  function showCameraOverlay() {
+    // カメラアクセスを試みる（失敗時はグラデーション背景）
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      return; // 対応していない場合は何もしない
+    }
+
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+      .then(stream => {
+        const video = document.createElement('video');
+        video.id = 'camera-video';
+        video.srcObject = stream;
+        video.autoplay = true;
+        video.playsInline = true;
+
+        const container = document.createElement('div');
+        container.className = 'camera-container';
+        container.appendChild(video);
+
+        // foundScreen の先頭に挿入
+        const foundScreen = document.getElementById('foundScreen');
+        foundScreen.insertBefore(container, foundScreen.firstChild);
+
+        video.play();
+      })
+      .catch(err => {
+        // カメラアクセス拒否時は何もしない（グラデーション背景のままにする）
+      });
+  }
+
+  /* ==================== 効果音（Web Audio API） ==================== */
+  function playFoundSound() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.frequency.setValueAtTime(800, now);
+      osc.frequency.setValueAtTime(1200, now + 0.1);
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.setValueAtTime(0, now + 0.2);
+
+      osc.start(now);
+      osc.stop(now + 0.2);
+    } catch (e) {
+      // 音声機能が使えない環境でもエラーにしない
+    }
+  }
+
+  function playSuccessSound() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const now = ctx.currentTime;
+
+      for (let i = 0; i < 3; i++) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        const freq = [523.25, 659.25, 783.99][i]; // C, E, G
+        osc.frequency.setValueAtTime(freq, now + i * 0.15);
+        gain.gain.setValueAtTime(0.2, now + i * 0.15);
+        gain.gain.setValueAtTime(0, now + i * 0.15 + 0.3);
+
+        osc.start(now + i * 0.15);
+        osc.stop(now + i * 0.15 + 0.3);
+      }
+    } catch (e) {
+      // 音声機能が使えない環境でもエラーにしない
+    }
+  }
+
+  /* ==================== 紙吹雪演出 ==================== */
+  function playConfetti() {
+    for (let i = 0; i < 50; i++) {
+      const confetti = document.createElement('div');
+      confetti.className = 'confetti';
+      confetti.textContent = ['🎉', '✨', '🎊', '⭐'][Math.floor(Math.random() * 4)];
+      confetti.style.left = Math.random() * 100 + '%';
+      confetti.style.top = '-20px';
+      confetti.style.fontSize = '2rem';
+      confetti.style.opacity = '1';
+      document.body.appendChild(confetti);
+
+      const duration = 2000 + Math.random() * 1000;
+      const startTime = Date.now();
+
+      const animate = () => {
+        const elapsed = Date.now() - startTime;
+        const progress = elapsed / duration;
+
+        if (progress >= 1) {
+          confetti.remove();
+          return;
+        }
+
+        confetti.style.top = (progress * window.innerHeight + 20) + 'px';
+        confetti.style.left = (parseFloat(confetti.style.left) + (Math.random() - 0.5) * 2) + '%';
+        confetti.style.opacity = 1 - progress;
+
+        requestAnimationFrame(animate);
+      };
+
+      animate();
+    }
+  }
+
+  /* ==================== ゲームリセット ==================== */
+  function resetGame() {
+    if (confirm('ゲームをさいしょからやりなおしますか？')) {
+      state = {
+        found: [],
+        bonusActive: false,
+        bonusTarget: null,
+        bonusStartTime: null,
+        cleared: false
+      };
+      saveState();
+
+      // カメラを停止
+      const video = document.getElementById('camera-video');
+      if (video && video.srcObject) {
+        video.srcObject.getTracks().forEach(track => track.stop());
+      }
+
+      // URLをクリアして画面を更新
+      window.history.replaceState({}, '', location.pathname);
+      updateUI();
+    }
+  }
+
+  /* ==================== 状態保存 ==================== */
+  function saveState() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+
+  /* ==================== ページ読込時 ==================== */
+  window.addEventListener('load', init);
+
+  // ページを離れる時カメラを停止
+  window.addEventListener('beforeunload', () => {
+    const video = document.getElementById('camera-video');
+    if (video && video.srcObject) {
+      video.srcObject.getTracks().forEach(track => track.stop());
+    }
+  });
+</script>
+
+</body>
+</html>
